@@ -1,4 +1,18 @@
-// Learn more: https://docs.val.town/vals/http/
-export default async function (req: Request): Promise<Response> {
-  return Response.json({ ok: true })
+import * as db from "./backend/db.ts";
+import app, { ensureOwnerAccount } from "./backend/app.ts";
+
+// 1. Initialize the Database tables
+await db.initDb();
+
+// 2. Ensure owner account credentials are set up
+await ensureOwnerAccount();
+
+// 3. Start Hono Deno web server
+console.log("Starting StoryWeave Hono app on Deno...");
+
+// Boot server locally if run directly
+if (import.meta.main) {
+  Deno.serve({ port: 8000 }, app.fetch);
 }
+
+export default app.fetch; // This is the entry point for HTTP vals on Val Town / Deno Context
