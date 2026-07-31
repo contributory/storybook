@@ -1,4 +1,4 @@
-import { createClient, type Client } from "npm:@libsql/client/web";
+import { createClient, type Client } from "npm:@libsql/client";
 
 // Environment variables
 const TURSO_DB_URL = Deno.env.get("TURSO_DB_URL") || "";
@@ -56,6 +56,9 @@ export interface User {
   is_admin: boolean;
   is_owner: boolean;
   join_date: string;
+  is_creator: boolean;
+  ai_author_name: string;
+  api_token: string;
   created_storybook?: number; // query computed
   created_storyverse?: number; // query computed
   following?: string[]; // list of usernames followed
@@ -71,6 +74,8 @@ export interface Storyverse {
   storybook_list?: Storybook[];
   comments_count?: number;
   likes_count?: number;
+  thumbnail_url?: string;
+  characters?: string;
 }
 
 export interface Storybook {
@@ -85,6 +90,8 @@ export interface Storybook {
   chapters_count?: number;
   comments_count?: number;
   likes_count?: number;
+  thumbnail_url?: string;
+  characters?: string;
 }
 
 export interface SharedCharacter {
@@ -96,6 +103,8 @@ export interface SharedCharacter {
   created_at: string;
   comments_count?: number;
   likes_count?: number;
+  thumbnail_url?: string;
+  characters?: string;
 }
 
 export interface Comment {
@@ -118,6 +127,21 @@ export interface Chapter {
   content: string;
   summary: string; // AI-assistance summary parameter!
   created_at: string;
+}
+
+export interface Notification {
+  id: string;
+  username: string;
+  sender: string;
+  type: string;
+  target_type: "storybook" | "storyverse" | "character";
+  target_id: string;
+  comment_id: string;
+  content: string;
+  is_read: boolean;
+  created_at: string;
+  sender_display_name?: string;
+  target_title?: string;
 }
 
 export interface ReadingProgress {
@@ -242,6 +266,41 @@ export async function initDb() {
     )
   `);
 
+  await dbClient.execute(`
+    CREATE TABLE IF NOT EXISTS notifications (
+      id TEXT PRIMARY KEY,
+      username TEXT NOT NULL,
+      sender TEXT NOT NULL,
+      type TEXT NOT NULL,
+      target_type TEXT NOT NULL,
+      target_id TEXT NOT NULL,
+      comment_id TEXT NOT NULL,
+      content TEXT NOT NULL,
+      is_read INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY(username) REFERENCES users(username) ON DELETE CASCADE
+    )
+  `);
+
+  // Safe migrations for new columns
+  const migrations = [
+    "ALTER TABLE users ADD COLUMN is_creator INTEGER NOT NULL DEFAULT 0",
+    "ALTER TABLE users ADD COLUMN ai_author_name TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE users ADD COLUMN api_token TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE storybooks ADD COLUMN thumbnail_url TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE storyverses ADD COLUMN thumbnail_url TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE shared_characters ADD COLUMN thumbnail_url TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE storybooks ADD COLUMN characters TEXT NOT NULL DEFAULT '[]'"
+  ];
+
+  for (const sql of migrations) {
+    try {
+      await dbClient.execute(sql);
+    } catch (err) {
+      // Column might already exist, which is expected on subsequent runs
+    }
+  }
+
   console.log("Database schema initialized successfully.");
 }
 
@@ -312,7 +371,7 @@ export async function createUser(username: string, display_name: string, passwor
     sql: `INSERT INTO users (username, display_name, password_hash, is_admin, is_owner, join_date) VALUES (?, ?, ?, ?, ?, ?)`,
     args: [username.toLowerCase(), display_name, password_hash, is_admin ? 1 : 0, is_owner ? 1 : 0, join_date],
   });
-  return { username: username.toLowerCase(), display_name, password_hash, is_admin, is_owner, join_date };
+  return { username: username.toLowerCase(), display_name, password_hash, is_admin, is_owner, join_date, is_creator: false, ai_author_name: "", api_token: "" };
 }
 
 export async function getUserByUsername(username: string): Promise<User | null> {
@@ -329,6 +388,9 @@ export async function getUserByUsername(username: string): Promise<User | null> 
     is_admin: row.is_admin === 1,
     is_owner: row.is_owner === 1,
     join_date: row.join_date as string,
+    is_creator: row.is_creator === 1,
+    ai_author_name: (row.ai_author_name as string) || "",
+    api_token: (row.api_token as string) || "",
   };
 }
 
@@ -346,7 +408,48 @@ export async function getAllUsers(): Promise<User[]> {
     is_admin: row.is_admin === 1,
     is_owner: row.is_owner === 1,
     join_date: row.join_date as string,
+    is_creator: row.is_creator === 1,
+    ai_author_name: (row.ai_author_name as string) || "",
+    api_token: (row.api_token as string) || "",
   }));
+}
+
+
+export async function updateUserSettings(username: string, display_name: string, is_creator: boolean, ai_author_name: string): Promise<boolean> {
+  const res = await dbClient.execute({
+    sql: `UPDATE users SET display_name = ?, is_creator = ?, ai_author_name = ? WHERE username = ?`,
+    args: [display_name, is_creator ? 1 : 0, ai_author_name, username.toLowerCase()]
+  });
+  return res.rowsAffected > 0;
+}
+
+export async function updateUserApiToken(username: string, api_token: string): Promise<boolean> {
+  const res = await dbClient.execute({
+    sql: `UPDATE users SET api_token = ? WHERE username = ?`,
+    args: [api_token, username.toLowerCase()]
+  });
+  return res.rowsAffected > 0;
+}
+
+export async function getUserByApiToken(api_token: string): Promise<User | null> {
+  if (!api_token) return null;
+  const res = await dbClient.execute({
+    sql: `SELECT * FROM users WHERE api_token = ?`,
+    args: [api_token]
+  });
+  if (res.rows.length === 0) return null;
+  const row = res.rows[0];
+  return {
+    username: row.username as string,
+    display_name: row.display_name as string,
+    password_hash: row.password_hash as string,
+    is_admin: row.is_admin === 1,
+    is_owner: row.is_owner === 1,
+    join_date: row.join_date as string,
+    is_creator: row.is_creator === 1,
+    ai_author_name: (row.ai_author_name as string) || "",
+    api_token: (row.api_token as string) || "",
+  };
 }
 
 export async function updateUserRole(username: string, is_admin: boolean): Promise<boolean> {
@@ -405,20 +508,28 @@ export async function getFollowing(username: string): Promise<string[]> {
 
 
 // Storyverse Helpers
-export async function createStoryverse(id: string, title: string, description: string, author: string): Promise<Storyverse> {
+export async function createStoryverse(id: string, title: string, description: string, author: string, thumbnail_url = ""): Promise<Storyverse> {
   const created_at = new Date().toISOString();
   await dbClient.execute({
-    sql: `INSERT INTO storyverses (id, title, description, author, created_at) VALUES (?, ?, ?, ?, ?)`,
-    args: [id, title, description, author.toLowerCase(), created_at],
+    sql: `INSERT INTO storyverses (id, title, description, author, created_at, thumbnail_url) VALUES (?, ?, ?, ?, ?, ?)`,
+    args: [id, title, description, author.toLowerCase(), created_at, thumbnail_url],
   });
-  return { id, title, description, author: author.toLowerCase(), created_at };
+  return { id, title, description, author: author.toLowerCase(), created_at, thumbnail_url };
 }
 
-export async function updateStoryverse(id: string, title: string, description: string): Promise<boolean> {
-  const res = await dbClient.execute({
-    sql: `UPDATE storyverses SET title = ?, description = ? WHERE id = ?`,
-    args: [title, description, id],
-  });
+export async function updateStoryverse(id: string, title: string, description: string, thumbnail_url?: string): Promise<boolean> {
+  let res;
+  if (thumbnail_url !== undefined) {
+    res = await dbClient.execute({
+      sql: `UPDATE storyverses SET title = ?, description = ?, thumbnail_url = ? WHERE id = ?`,
+      args: [title, description, thumbnail_url, id],
+    });
+  } else {
+    res = await dbClient.execute({
+      sql: `UPDATE storyverses SET title = ?, description = ? WHERE id = ?`,
+      args: [title, description, id],
+    });
+  }
   return res.rowsAffected > 0;
 }
 
@@ -458,6 +569,7 @@ export async function getStoryverseById(id: string): Promise<Storyverse | null> 
     storybook_list: books,
     comments_count: commentsCount,
     likes_count: likesCount,
+    thumbnail_url: (row.thumbnail_url as string) || "",
   };
 }
 
@@ -475,6 +587,7 @@ export async function getAllStoryverses(): Promise<Storyverse[]> {
       created_at: row.created_at as string,
       comments_count: commentsCount,
       likes_count: likesCount,
+      thumbnail_url: (row.thumbnail_url as string) || "",
     });
   }
   return list;
@@ -496,12 +609,14 @@ export async function createStorybook(
   authors: string,
   categories: string,
   allow_other_author_edit: boolean,
-  storyverse_id: string | null
+  storyverse_id: string | null,
+  thumbnail_url = "",
+  characters = "[]"
 ): Promise<Storybook> {
   const created_at = new Date().toISOString();
   await dbClient.execute({
-    sql: `INSERT INTO storybooks (id, title, description, authors, categories, created_at, allow_other_author_edit, storyverse_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    args: [id, title, description, authors, categories, created_at, allow_other_author_edit ? 1 : 0, storyverse_id],
+    sql: `INSERT INTO storybooks (id, title, description, authors, categories, created_at, allow_other_author_edit, storyverse_id, thumbnail_url, characters) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [id, title, description, authors, categories, created_at, allow_other_author_edit ? 1 : 0, storyverse_id, thumbnail_url, characters],
   });
   return {
     id,
@@ -512,6 +627,8 @@ export async function createStorybook(
     created_at,
     allow_other_author_edit,
     storyverse_id,
+    thumbnail_url,
+    characters,
   };
 }
 
@@ -521,12 +638,32 @@ export async function updateStorybook(
   description: string,
   categories: string,
   allow_other_author_edit: boolean,
-  storyverse_id: string | null
+  storyverse_id: string | null,
+  thumbnail_url?: string,
+  characters?: string
 ): Promise<boolean> {
-  const res = await dbClient.execute({
-    sql: `UPDATE storybooks SET title = ?, description = ?, categories = ?, allow_other_author_edit = ?, storyverse_id = ? WHERE id = ?`,
-    args: [title, description, categories, allow_other_author_edit ? 1 : 0, storyverse_id, id],
-  });
+  let res;
+  if (thumbnail_url !== undefined && characters !== undefined) {
+    res = await dbClient.execute({
+      sql: `UPDATE storybooks SET title = ?, description = ?, categories = ?, allow_other_author_edit = ?, storyverse_id = ?, thumbnail_url = ?, characters = ? WHERE id = ?`,
+      args: [title, description, categories, allow_other_author_edit ? 1 : 0, storyverse_id, thumbnail_url, characters, id],
+    });
+  } else if (thumbnail_url !== undefined) {
+    res = await dbClient.execute({
+      sql: `UPDATE storybooks SET title = ?, description = ?, categories = ?, allow_other_author_edit = ?, storyverse_id = ?, thumbnail_url = ? WHERE id = ?`,
+      args: [title, description, categories, allow_other_author_edit ? 1 : 0, storyverse_id, thumbnail_url, id],
+    });
+  } else if (characters !== undefined) {
+    res = await dbClient.execute({
+      sql: `UPDATE storybooks SET title = ?, description = ?, categories = ?, allow_other_author_edit = ?, storyverse_id = ?, characters = ? WHERE id = ?`,
+      args: [title, description, categories, allow_other_author_edit ? 1 : 0, storyverse_id, characters, id],
+    });
+  } else {
+    res = await dbClient.execute({
+      sql: `UPDATE storybooks SET title = ?, description = ?, categories = ?, allow_other_author_edit = ?, storyverse_id = ? WHERE id = ?`,
+      args: [title, description, categories, allow_other_author_edit ? 1 : 0, storyverse_id, id],
+    });
+  }
   return res.rowsAffected > 0;
 }
 
@@ -558,6 +695,8 @@ export async function getStorybookById(id: string): Promise<Storybook | null> {
     chapters_count: chaptersCount,
     comments_count: commentsCount,
     likes_count: likesCount,
+    thumbnail_url: (row.thumbnail_url as string) || "",
+    characters: (row.characters as string) || "[]",
   };
 }
 
@@ -584,6 +723,8 @@ export async function getAllStorybooks(): Promise<Storybook[]> {
       chapters_count: chaptersCount,
       comments_count: commentsCount,
       likes_count: likesCount,
+      thumbnail_url: (row.thumbnail_url as string) || "",
+      characters: (row.characters as string) || "[]",
     });
   }
   return list;
@@ -616,14 +757,15 @@ export async function createSharedCharacter(
   name: string,
   other_info: string,
   storyverse_id: string,
-  author: string
+  author: string,
+  thumbnail_url = ""
 ): Promise<SharedCharacter> {
   const created_at = new Date().toISOString();
   await dbClient.execute({
-    sql: `INSERT INTO shared_characters (id, name, other_info, storyverse_id, author, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
-    args: [id, name, other_info, storyverse_id, author.toLowerCase(), created_at],
+    sql: `INSERT INTO shared_characters (id, name, other_info, storyverse_id, author, created_at, thumbnail_url) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    args: [id, name, other_info, storyverse_id, author.toLowerCase(), created_at, thumbnail_url],
   });
-  return { id, name, other_info, storyverse_id, author: author.toLowerCase(), created_at };
+  return { id, name, other_info, storyverse_id, author: author.toLowerCase(), created_at, thumbnail_url };
 }
 
 export async function getSharedCharacterById(id: string): Promise<SharedCharacter | null> {
@@ -645,6 +787,7 @@ export async function getSharedCharacterById(id: string): Promise<SharedCharacte
     created_at: row.created_at as string,
     comments_count: commentsCount,
     likes_count: likesCount,
+    thumbnail_url: (row.thumbnail_url as string) || "",
   };
 }
 
@@ -666,9 +809,27 @@ export async function getCharactersByStoryverse(storyverse_id: string): Promise<
       created_at: row.created_at as string,
       comments_count: commentsCount,
       likes_count: likesCount,
+      thumbnail_url: (row.thumbnail_url as string) || "",
     });
   }
   return list;
+}
+
+
+export async function updateSharedCharacter(id: string, name: string, other_info: string, thumbnail_url?: string): Promise<boolean> {
+  let res;
+  if (thumbnail_url !== undefined) {
+    res = await dbClient.execute({
+      sql: `UPDATE shared_characters SET name = ?, other_info = ?, thumbnail_url = ? WHERE id = ?`,
+      args: [name, other_info, thumbnail_url, id],
+    });
+  } else {
+    res = await dbClient.execute({
+      sql: `UPDATE shared_characters SET name = ?, other_info = ? WHERE id = ?`,
+      args: [name, other_info, id],
+    });
+  }
+  return res.rowsAffected > 0;
 }
 
 export async function deleteSharedCharacter(id: string): Promise<boolean> {
@@ -965,4 +1126,148 @@ export async function getReadingProgress(username: string): Promise<ReadingProgr
     updated_at: row.updated_at as string,
     storybook_title: (row.storybook_title as string) || "Unknown Storybook",
   }));
+}
+
+
+// --- Notification Helpers ---
+
+export async function createNotification(
+  username: string,
+  sender: string,
+  type: string,
+  target_type: "storybook" | "storyverse" | "character",
+  target_id: string,
+  comment_id: string,
+  content: string
+): Promise<Notification> {
+  const id = `notif_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+  const created_at = new Date().toISOString();
+  await dbClient.execute({
+    sql: `INSERT INTO notifications (id, username, sender, type, target_type, target_id, comment_id, content, is_read, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [id, username.toLowerCase(), sender.toLowerCase(), type, target_type, target_id, comment_id, content, 0, created_at],
+  });
+  return { id, username: username.toLowerCase(), sender: sender.toLowerCase(), type, target_type, target_id, comment_id, content, is_read: false, created_at };
+}
+
+export async function getNotificationsForUser(username: string): Promise<Notification[]> {
+  const res = await dbClient.execute({
+    sql: `
+      SELECT n.*, u.display_name as sender_display_name
+      FROM notifications n
+      LEFT JOIN users u ON n.sender = u.username
+      WHERE n.username = ?
+      ORDER BY n.created_at DESC
+    `,
+    args: [username.toLowerCase()],
+  });
+
+  const notifications: Notification[] = [];
+  for (const row of res.rows) {
+    let target_title = "Liên kết";
+    const t_type = row.target_type as string;
+    const t_id = row.target_id as string;
+    if (t_type === "storybook") {
+      const b = await getStorybookById(t_id);
+      if (b) target_title = b.title;
+    } else if (t_type === "storyverse") {
+      const sv = await getStoryverseById(t_id);
+      if (sv) target_title = sv.title;
+    } else if (t_type === "character") {
+      const c = await getSharedCharacterById(t_id);
+      if (c) target_title = c.name;
+    }
+
+    notifications.push({
+      id: row.id as string,
+      username: row.username as string,
+      sender: row.sender as string,
+      type: row.type as string,
+      target_type: row.target_type as "storybook" | "storyverse" | "character",
+      target_id: row.target_id as string,
+      comment_id: row.comment_id as string,
+      content: row.content as string,
+      is_read: row.is_read === 1,
+      created_at: row.created_at as string,
+      sender_display_name: (row.sender_display_name as string) || (row.sender as string),
+      target_title,
+    });
+  }
+  return notifications;
+}
+
+export async function markNotificationAsRead(id: string): Promise<boolean> {
+  const res = await dbClient.execute({
+    sql: `UPDATE notifications SET is_read = 1 WHERE id = ?`,
+    args: [id],
+  });
+  return res.rowsAffected > 0;
+}
+
+export async function getUnreadNotificationsCount(username: string): Promise<number> {
+  const res = await dbClient.execute({
+    sql: `SELECT COUNT(*) as count FROM notifications WHERE username = ? AND is_read = 0`,
+    args: [username.toLowerCase()],
+  });
+  return Number(res.rows[0].count);
+}
+
+
+// --- Safe S3 / Base64 Thumbnail Upload Helpers ---
+
+export async function uploadThumbnail(type: string, id: string, file: any): Promise<string> {
+  const arrayBuffer = await file.arrayBuffer();
+  const fileBytes = new Uint8Array(arrayBuffer);
+  const contentType = file.type || "image/jpeg";
+
+  if (useS3 && s3Client) {
+    try {
+      const { PutObjectCommand } = await import("npm:@aws-sdk/client-s3");
+      const key = `thumbnails/${type}/${id}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
+      await s3Client.send(
+        new PutObjectCommand({
+          Bucket: S3_BUCKET,
+          Key: key,
+          Body: fileBytes,
+          ContentType: contentType,
+        })
+      );
+      return `/api/s3-proxy?key=${encodeURIComponent(key)}`;
+    } catch (err) {
+      console.error("Failed to upload thumbnail to S3, falling back to base64:", err);
+    }
+  }
+
+  // Fallback to base64 string safely
+  let binary = "";
+  const len = fileBytes.byteLength;
+  const chunk = 8192;
+  for (let i = 0; i < len; i += chunk) {
+    const subarr = fileBytes.subarray(i, i + chunk);
+    // Convert subarray to standard array to avoid max call stack size
+    const arr = Array.from(subarr);
+    binary += String.fromCharCode.apply(null, arr);
+  }
+  const base64 = btoa(binary);
+  return `data:${contentType};base64,${base64}`;
+}
+
+export async function getS3Object(key: string): Promise<{ body: Uint8Array, contentType: string } | null> {
+  if (!s3Client) return null;
+  try {
+    const { GetObjectCommand } = await import("npm:@aws-sdk/client-s3");
+    const response = await s3Client.send(
+      new GetObjectCommand({
+        Bucket: S3_BUCKET,
+        Key: key,
+      })
+    );
+    const body = await response.Body.transformToByteArray();
+    return {
+      body,
+      contentType: response.ContentType || "image/jpeg",
+    };
+  } catch (err) {
+    console.error("Failed to fetch from S3:", err);
+    return null;
+  }
 }

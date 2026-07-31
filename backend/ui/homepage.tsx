@@ -92,11 +92,11 @@ export function renderHomepage(storybooks: db.Storybook[], progress: db.ReadingP
         <!-- Storybooks Grid -->
         <div id="booksGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             ${storybooks.map(b => html`
-            <article data-categories="${b.categories}" class="book-card group bg-white dark:bg-[#161925]/40 border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700/80 rounded-2xl overflow-hidden flex flex-col hover:translate-y-[-4px] transition-all duration-300 shadow-xl">
+            <article data-categories="${b.categories}" class="book-card group relative bg-white dark:bg-[#161925]/40 border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700/80 rounded-2xl overflow-hidden flex flex-col hover:translate-y-[-4px] transition-all duration-300 shadow-xl">
                 <!-- Cover Image Placeholder (gradient-mesh style) -->
                 <div class="h-40 bg-gradient-to-br from-amber-600/20 via-slate-800 to-yellow-600/10 p-6 flex flex-col justify-end relative overflow-hidden border-b border-gray-200 dark:border-gray-800">
-                    <div class="absolute inset-0 opacity-10 group-hover:opacity-20 transition-opacity bg-cover" style="background-image: url('https://maxm-imggenurl.web.val.run/a-minimalistic-fantasy-novel-cover-illustration-art-style')"></div>
-                    <div class="absolute top-4 right-4 flex space-x-1.5">
+                    <div class="absolute inset-0 opacity-15 group-hover:opacity-25 transition-opacity bg-cover bg-center" style="background-image: url('${b.thumbnail_url || "https://maxm-imggenurl.web.val.run/a-minimalistic-fantasy-novel-cover-illustration-art-style"}')"></div>
+                    <div class="absolute top-4 right-4 flex space-x-1.5 relative z-10">
                         ${b.allow_other_author_edit ? html`
                         <span class="px-2 py-0.5 rounded bg-green-500/10 text-green-400 border border-green-500/20 text-[10px] font-bold" title="Những người dùng khác được phép đồng sáng tác"><i class="fa-solid fa-users mr-1"></i> Cộng tác</span>
                         ` : html`
@@ -104,7 +104,7 @@ export function renderHomepage(storybooks: db.Storybook[], progress: db.ReadingP
                         `}
                     </div>
 
-                    <div class="flex flex-wrap gap-1.5 mb-2">
+                    <div class="flex flex-wrap gap-1.5 mb-2 relative z-10">
                         ${b.categories.split(",").map(cat => html`
                         <span class="px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-semibold">${cat.trim()}</span>
                         `)}
@@ -114,13 +114,13 @@ export function renderHomepage(storybooks: db.Storybook[], progress: db.ReadingP
                 <!-- Book Body -->
                 <div class="p-6 flex-grow flex flex-col justify-between space-y-4">
                     <div class="space-y-2 text-left">
-                        <a href="/storybook/${b.id}">
+                        <a href="/storybook/${b.id}" class="after:absolute after:inset-0">
                             <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100 group-hover:text-amber-400 transition-colors line-clamp-1">${b.title}</h3>
                         </a>
-                        <p class="text-sm text-gray-600 dark:text-gray-400 line-clamp-3 leading-relaxed">${b.description}</p>
+                        <p class="text-sm text-gray-600 dark:text-gray-400 line-clamp-3 leading-relaxed relative z-10">${b.description}</p>
                     </div>
 
-                    <div class="pt-4 border-t border-gray-200 dark:border-gray-800/80 flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
+                    <div class="pt-4 border-t border-gray-200 dark:border-gray-800/80 flex items-center justify-between text-xs text-gray-600 dark:text-gray-400 relative z-10">
                         <span class="font-medium text-gray-700 dark:text-gray-300"><i class="fa-solid fa-pen-nib mr-1.5 text-amber-500/80"></i>${b.authors.split(",")[0]}</span>
                         <div class="flex items-center space-x-3">
                             <span><i class="fa-solid fa-book-open mr-1"></i> ${b.chapters_count || 0} ch</span>

@@ -31,9 +31,22 @@ Deno.test({
 
     // 3. Storybook Creation
     const bookId = `book_${Date.now()}`;
-    const book = await db.createStorybook(bookId, "Sách Thử Nghiệm", "Mô tả sách", username, "Hành Động, Phiêu Lưu", true, svId);
+    const initialChars = '[{"id":"ton-ngo-khong","name":"Tôn Ngộ Không","role":"Main"}]';
+    const book = await db.createStorybook(bookId, "Sách Thử Nghiệm", "Mô tả sách", username, "Hành Động, Phiêu Lưu", true, svId, "", initialChars);
     assertExists(book);
     assertEquals(book.title, "Sách Thử Nghiệm");
+    assertEquals(book.characters, initialChars);
+
+    const retrievedBook = await db.getStorybookById(bookId);
+    assertExists(retrievedBook);
+    assertEquals(retrievedBook.characters, initialChars);
+
+    // Update characters
+    const updatedChars = '[{"id":"duong-tang","name":"Đường Tăng","role":"Master"}]';
+    await db.updateStorybook(bookId, book.title, book.description, book.categories, book.allow_other_author_edit, book.storyverse_id, undefined, updatedChars);
+    const retrievedBook2 = await db.getStorybookById(bookId);
+    assertExists(retrievedBook2);
+    assertEquals(retrievedBook2.characters, updatedChars);
 
     // 4. Chapter Creation with custom AI Summary parameter!
     const chapter = await db.createOrEditChapter(bookId, 1, "Chương 1: Mở Đầu", "Đây là nội dung cực kỳ dài và hấp dẫn.", "Tóm tắt chương mở đầu cho AI");
@@ -59,12 +72,17 @@ Deno.test({
 Deno.test({
   name: "MCP Server Tools Dispatching Test",
   fn: async () => {
+    let testMcpUser = await db.getUserByUsername("mcp_test_user");
+    if (!testMcpUser) {
+      testMcpUser = await db.createUser("mcp_test_user", "MCP Test User", "pwd", true, true);
+    }
+
     // 1. Test tools list schema retrieval
     const listResponse = await handleMcpRequest({
       jsonrpc: "2.0",
       method: "tools/list",
       id: 1
-    });
+    }, testMcpUser);
     assertExists(listResponse.result);
     assertExists(listResponse.result.tools);
     assertEquals(listResponse.result.tools.length > 10, true);
@@ -83,7 +101,7 @@ Deno.test({
         arguments: { storybook_id: bookId }
       },
       id: 2
-    });
+    }, testMcpUser);
 
     assertExists(callResponse.result);
     assertExists(callResponse.result.content);
@@ -116,5 +134,57 @@ Deno.test({
     const data = await res.json();
     assertEquals(data.success, true);
     assertEquals(data.user.username, testUser);
+  }
+});
+
+
+Deno.test({
+  name: "New Features: Settings, Notifications, and MCP Token Auth",
+  fn: async () => {
+    // 1. Create a user and check default settings
+    const username = `testsettings_${Date.now()}`;
+    const user = await db.createUser(username, "Settings User", "pwd", false, false);
+    assertExists(user);
+    assertEquals(user.is_creator, false); // defaults to false
+    assertEquals(user.ai_author_name, "");
+
+    // 2. Update settings
+    const updateOk = await db.updateUserSettings(username, "New Display Name", true, "GPT-4o");
+    assertEquals(updateOk, true);
+
+    const updatedUser = await db.getUserByUsername(username);
+    assertExists(updatedUser);
+    assertEquals(updatedUser.display_name, "New Display Name");
+    assertEquals(updatedUser.is_creator, true);
+    assertEquals(updatedUser.ai_author_name, "GPT-4o");
+
+    // 3. Update and retrieve by API token
+    const token = `sb_tok_${Date.now()}`;
+    const tokenOk = await db.updateUserApiToken(username, token);
+    assertEquals(tokenOk, true);
+
+    const retrievedByToken = await db.getUserByApiToken(token);
+    assertExists(retrievedByToken);
+    assertEquals(retrievedByToken.username, username);
+
+    // 4. Create notification
+    const sender = `sender_${Date.now()}`;
+    await db.createUser(sender, "Sender User", "pwd", false, false);
+    const notif = await db.createNotification(username, sender, "comment", "storybook", "some-book", "some-comment", "comment content");
+    assertExists(notif);
+    assertEquals(notif.is_read, false);
+
+    const count = await db.getUnreadNotificationsCount(username);
+    assertEquals(count, 1);
+
+    const list = await db.getNotificationsForUser(username);
+    assertEquals(list.length, 1);
+    assertEquals(list[0].sender, sender);
+
+    // Mark as read
+    const markOk = await db.markNotificationAsRead(notif.id);
+    assertEquals(markOk, true);
+    const newCount = await db.getUnreadNotificationsCount(username);
+    assertEquals(newCount, 0);
   }
 });
