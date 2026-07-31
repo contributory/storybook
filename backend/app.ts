@@ -704,70 +704,34 @@ app.delete("/api/admin/comments/:id", async c => {
 });
 
 
-// --- MCP SERVER INTEGRATION (JSON-RPC + SSE) ---
+// --- MCP SERVER INTEGRATION (Streamable HTTP) ---
 
-// Direct endpoint
-app.post("/api/mcp", async c => {
-  try {
-    const body = await c.req.json();
-    const result = await handleMcpRequest(body);
-    return c.json(result);
-  } catch (err: any) {
-    return c.json({ jsonrpc: "2.0", error: { code: -32603, message: err.message }, id: null });
-  }
+// Streamable HTTP: GET to confirm server capability
+app.get("/mcp", c => {
+  return c.json({ mcp: "streamable-http", version: "2025-03-26" });
 });
 
-// SSE endpoint to standard MCP client compatibility
-app.get("/mcp/sse", async c => {
-  c.header("Content-Type", "text/event-stream");
-  c.header("Cache-Control", "no-cache");
-  c.header("Connection", "keep-alive");
-
-  // SSE protocol: keep connection open, write SSE stream
-  const { readable, writable } = new TransformStream();
-  const writer = writable.getWriter();
-  const encoder = new TextEncoder();
-
-  // Keep alive timer
-  const keepAlive = setInterval(async () => {
-    try {
-      await writer.write(encoder.encode(": keep-alive\n\n"));
-    } catch {
-      clearInterval(keepAlive);
-    }
-  }, 15000);
-
-  // Send initial standard MCP SSE endpoint announcement
-  setTimeout(async () => {
-    try {
-      await writer.write(
-        encoder.encode(`event: endpoint\ndata: /mcp/message\n\n`)
-      );
-    } catch {
-      clearInterval(keepAlive);
-    }
-  }, 100);
-
-  c.req.raw.signal.addEventListener("abort", () => {
-    clearInterval(keepAlive);
-  });
-
-  return new Response(readable, {
-    headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      "Connection": "keep-alive",
-    },
-  });
-});
-
-app.post("/mcp/message", async c => {
+// Streamable HTTP: single POST endpoint for all JSON-RPC messages
+app.post("/mcp", async c => {
   try {
     const body = await c.req.json();
+
+    // Handle batch requests (array of JSON-RPC messages)
+    if (Array.isArray(body)) {
+      const results = await Promise.all(body.map(req => handleMcpRequest(req)));
+      return c.json(results);
+    }
+
     const result = await handleMcpRequest(body);
+
+    // Notifications (no id) return 202 with no body
+    if (result === null || result === undefined) {
+      return new Response(null, { status: 202 });
+    }
+
     return c.json(result);
   } catch (err: any) {
-    return c.json({ error: err.message }, 500);
+    return c.json({ jsonrpc: "2.0", error: { code: -32603, message: err.message }, id: null }, 500);
   }
 });
 

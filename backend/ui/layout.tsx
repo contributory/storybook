@@ -8,7 +8,7 @@ export function layout(title: string, content: any, user: db.User | null, curren
   const isAdmin = user ? (user.is_admin || user.is_owner) : false;
 
   return html`<!DOCTYPE html>
-<html lang="vi" class="dark">
+<html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -47,11 +47,75 @@ export function layout(title: string, content: any, user: db.User | null, curren
             scrollbar-width: none;
         }
     </style>
+    <script>
+        function getTheme() {
+            if (typeof localStorage !== 'undefined' && localStorage.getItem('theme')) {
+                return localStorage.getItem('theme');
+            }
+            return 'system'; // Default to system
+        }
+
+        function applyTheme(theme) {
+            let isDark = false;
+            if (theme === 'dark') {
+                isDark = true;
+            } else if (theme === 'system') {
+                isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            }
+            
+            if (isDark) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+            
+            if (typeof localStorage !== 'undefined') {
+                localStorage.setItem('theme', theme);
+            }
+            
+            updateThemeUI(theme);
+        }
+        
+        if (typeof window !== 'undefined') {
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+                if (getTheme() === 'system') applyTheme('system');
+            });
+        }
+
+        applyTheme(getTheme());
+        
+        function setNextTheme() {
+            const current = getTheme();
+            const next = current === 'dark' ? 'light' : current === 'light' ? 'system' : 'dark';
+            applyTheme(next);
+        }
+
+        function updateThemeUI(theme) {
+            const icon = document.getElementById('theme-toggle-icon');
+            const text = document.getElementById('theme-toggle-text');
+            if (!icon) return;
+            
+            if (theme === 'dark') {
+                icon.className = 'fa-solid fa-moon text-amber-300';
+                if (text) text.innerText = 'Tối';
+            } else if (theme === 'light') {
+                icon.className = 'fa-solid fa-sun text-amber-500';
+                if (text) text.innerText = 'Sáng';
+            } else {
+                icon.className = 'fa-solid fa-desktop text-gray-500 dark:text-gray-400';
+                if (text) text.innerText = 'Hệ thống';
+            }
+        }
+        
+        window.addEventListener('DOMContentLoaded', () => {
+            updateThemeUI(getTheme());
+        });
+    </script>
 </head>
-<body class="bg-[#0f111a] text-gray-100 min-h-screen flex flex-col selection:bg-yellow-500 selection:text-black">
+<body class="bg-gray-50 dark:bg-[#0f111a] text-gray-900 dark:text-gray-100 min-h-screen flex flex-col selection:bg-yellow-500 selection:text-black">
 
     <!-- Header / Navbar -->
-    <header class="border-b border-gray-800 bg-[#161925]/90 backdrop-blur sticky top-0 z-50 transition-all duration-300">
+    <header class="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-[#161925]/90 backdrop-blur sticky top-0 z-50 transition-all duration-300">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <div class="flex items-center space-x-8">
                 <!-- Logo -->
@@ -64,19 +128,19 @@ export function layout(title: string, content: any, user: db.User | null, curren
 
                 <!-- Navigation Links -->
                 <nav class="hidden md:flex items-center space-x-6 text-sm font-medium">
-                    <a href="/" class="transition-colors hover:text-amber-400 ${currentPath === "/" ? "text-amber-400" : "text-gray-300"}">
+                    <a href="/" class="transition-colors hover:text-amber-400 ${currentPath === "/" ? "text-amber-400" : "text-gray-700 dark:text-gray-300"}">
                         <i class="fa-solid fa-house mr-1.5"></i> Trang chủ
                     </a>
-                    <a href="/storyverses" class="transition-colors hover:text-amber-400 ${currentPath.startsWith("/storyverses") ? "text-amber-400" : "text-gray-300"}">
+                    <a href="/storyverses" class="transition-colors hover:text-amber-400 ${currentPath.startsWith("/storyverses") ? "text-amber-400" : "text-gray-700 dark:text-gray-300"}">
                         <i class="fa-solid fa-earth-asia mr-1.5"></i> Vũ trụ truyện
                     </a>
                     ${user ? html`
-                    <a href="/creator" class="transition-colors hover:text-amber-400 ${currentPath.startsWith("/creator") ? "text-amber-400" : "text-gray-300"}">
+                    <a href="/creator" class="transition-colors hover:text-amber-400 ${currentPath.startsWith("/creator") ? "text-amber-400" : "text-gray-700 dark:text-gray-300"}">
                         <i class="fa-solid fa-feather-pointed mr-1.5"></i> Nhà sáng tạo
                     </a>
                     ` : ""}
                     ${isAdmin ? html`
-                    <a href="/admin" class="transition-colors hover:text-amber-400 ${currentPath.startsWith("/admin") ? "text-amber-400" : "text-gray-300"}">
+                    <a href="/admin" class="transition-colors hover:text-amber-400 ${currentPath.startsWith("/admin") ? "text-amber-400" : "text-gray-700 dark:text-gray-300"}">
                         <i class="fa-solid fa-user-shield mr-1.5"></i> Admin
                     </a>
                     ` : ""}
@@ -85,22 +149,25 @@ export function layout(title: string, content: any, user: db.User | null, curren
 
             <!-- User Auth Profile -->
             <div class="flex items-center space-x-4">
+                <button onclick="setNextTheme()" class="p-2 text-gray-600 dark:text-gray-400 hover:text-amber-500 dark:hover:text-amber-400 transition-colors flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800" title="Chuyển chế độ giao diện">
+                    <i id="theme-toggle-icon" class="fa-solid fa-desktop"></i>
+                </button>
                 ${user ? html`
                 <div class="flex items-center space-x-3">
                     <div class="hidden sm:flex flex-col items-end text-right">
-                        <span class="text-sm font-semibold text-gray-200">${user.display_name}</span>
+                        <span class="text-sm font-semibold text-gray-800 dark:text-gray-200">${user.display_name}</span>
                         <span class="text-xs text-amber-500 font-medium">@${user.username} ${user.is_owner ? "(Owner)" : user.is_admin ? "(Admin)" : ""}</span>
                     </div>
-                    <div class="w-10 h-10 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center text-amber-400 font-bold uppercase ring-2 ring-amber-500/20">
+                    <div class="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 flex items-center justify-center text-amber-400 font-bold uppercase ring-2 ring-amber-500/20">
                         ${user.display_name.charAt(0)}
                     </div>
-                    <button onclick="logout()" class="p-2 text-gray-400 hover:text-red-400 transition-colors" title="Đăng xuất">
+                    <button onclick="logout()" class="p-2 text-gray-600 dark:text-gray-400 hover:text-red-400 transition-colors" title="Đăng xuất">
                         <i class="fa-solid fa-right-from-bracket text-lg"></i>
                     </button>
                 </div>
                 ` : html`
                 <div class="flex items-center space-x-3">
-                    <button onclick="openAuthModal('login')" class="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors">Đăng nhập</button>
+                    <button onclick="openAuthModal('login')" class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:text-white transition-colors">Đăng nhập</button>
                     <button onclick="openAuthModal('register')" class="px-4 py-2 text-sm font-semibold text-black bg-gradient-to-r from-amber-500 to-yellow-400 rounded-lg hover:brightness-110 transition-all shadow-lg shadow-yellow-500/10">Đăng ký</button>
                 </div>
                 `}
@@ -114,10 +181,10 @@ export function layout(title: string, content: any, user: db.User | null, curren
     </main>
 
     <!-- Footer -->
-    <footer class="border-t border-gray-800 bg-[#0c0e16] py-8 text-center text-sm text-gray-500 mt-12">
+    <footer class="border-t border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-[#0c0e16] py-8 text-center text-sm text-gray-500 dark:text-gray-500 mt-12">
         <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0">
             <div class="flex items-center space-x-2">
-                <span class="font-semibold text-gray-400">StoryWeave</span>
+                <span class="font-semibold text-gray-600 dark:text-gray-400">StoryWeave</span>
                 <span>&copy; ${new Date().getFullYear()} - Nền tảng kể chuyện cộng tác hỗ trợ AI</span>
             </div>
             <div class="flex space-x-6">
@@ -129,29 +196,29 @@ export function layout(title: string, content: any, user: db.User | null, curren
 
     <!-- Auth Modal -->
     <div id="authModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
-        <div class="bg-[#161925] border border-gray-800 rounded-2xl w-full max-w-md p-8 relative shadow-2xl transform scale-95 transition-transform duration-300">
-            <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white">
+        <div class="bg-white dark:bg-[#161925] border border-gray-200 dark:border-gray-800 rounded-2xl w-full max-w-md p-8 relative shadow-2xl transform scale-95 transition-transform duration-300">
+            <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:text-white">
                 <i class="fa-solid fa-xmark text-xl"></i>
             </button>
 
-            <h3 id="modalTitle" class="text-2xl font-bold text-white mb-6">Đăng nhập</h3>
+            <h3 id="modalTitle" class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Đăng nhập</h3>
 
             <form id="authForm" onsubmit="handleAuthSubmit(event)" class="space-y-4">
                 <input type="hidden" id="authType" value="login">
 
                 <div>
-                    <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Tài khoản (username)</label>
-                    <input type="text" id="authUsername" required minlength="3" class="w-full bg-[#0f111a] border border-gray-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-amber-500 transition-colors" placeholder="Nhập tên tài khoản...">
+                    <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5">Tài khoản (username)</label>
+                    <input type="text" id="authUsername" required minlength="3" class="w-full bg-gray-50 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors" placeholder="Nhập tên tài khoản...">
                 </div>
 
                 <div id="displayNameGroup" class="hidden">
-                    <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Tên hiển thị (display name)</label>
-                    <input type="text" id="authDisplayName" class="w-full bg-[#0f111a] border border-gray-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-amber-500 transition-colors" placeholder="Tên hiển thị công khai...">
+                    <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5">Tên hiển thị (display name)</label>
+                    <input type="text" id="authDisplayName" class="w-full bg-gray-50 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors" placeholder="Tên hiển thị công khai...">
                 </div>
 
                 <div>
-                    <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Mật khẩu</label>
-                    <input type="password" id="authPassword" required minlength="4" class="w-full bg-[#0f111a] border border-gray-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-amber-500 transition-colors" placeholder="••••••••">
+                    <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5">Mật khẩu</label>
+                    <input type="password" id="authPassword" required minlength="4" class="w-full bg-gray-50 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors" placeholder="••••••••">
                 </div>
 
                 <div id="authError" class="text-red-400 text-sm hidden py-1"></div>
@@ -161,7 +228,7 @@ export function layout(title: string, content: any, user: db.User | null, curren
                 </button>
             </form>
 
-            <div class="mt-6 text-center text-sm text-gray-400 border-t border-gray-800/60 pt-4">
+            <div class="mt-6 text-center text-sm text-gray-600 dark:text-gray-400 border-t border-gray-200 dark:border-gray-800/60 pt-4">
                 <span id="switchAuthPrompt">Chưa có tài khoản?</span>
                 <button onclick="toggleAuthType()" id="switchAuthBtn" class="text-amber-400 font-semibold hover:underline ml-1">Đăng ký ngay</button>
             </div>

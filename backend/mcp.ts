@@ -1,5 +1,7 @@
 import * as db from "./db.ts";
 
+const BASE_URL = Deno.env.get("BASE_URL") || "http://localhost:8000";
+
 export const MCP_TOOLS = [
   {
     name: "create_storybook_info",
@@ -10,12 +12,11 @@ export const MCP_TOOLS = [
         id: { type: "string", description: "ID duy nhất cho bộ truyện (ví dụ: 'tay-du-ky')" },
         title: { type: "string", description: "Tiêu đề bộ truyện" },
         description: { type: "string", description: "Mô tả ngắn" },
-        authors: { type: "string", description: "Tác giả (hoặc danh sách tác giả cách nhau bởi dấu phẩy)" },
         categories: { type: "string", description: "Thể loại (cách nhau bởi dấu phẩy, ví dụ: 'Tiên Hiệp, Huyền Huyễn')" },
         allow_other_author_edit: { type: "boolean", description: "Cho phép tác giả khác chỉnh sửa nội dung" },
         storyverse_id: { type: "string", description: "ID của vũ trụ cốt truyện (tùy chọn)" }
       },
-      required: ["id", "title", "description", "authors", "categories", "allow_other_author_edit"]
+      required: ["id", "title", "description", "categories", "allow_other_author_edit"]
     }
   },
   {
@@ -75,10 +76,9 @@ export const MCP_TOOLS = [
       properties: {
         id: { type: "string", description: "ID duy nhất cho vũ trụ (ví dụ: 'mcu')" },
         title: { type: "string", description: "Tên vũ trụ cốt truyện" },
-        description: { type: "string", description: "Mô tả chi tiết về thế giới, luật lệ trong vũ trụ" },
-        author: { type: "string", description: "Username của người tạo" }
+        description: { type: "string", description: "Mô tả chi tiết về thế giới, luật lệ trong vũ trụ" }
       },
-      required: ["id", "title", "description", "author"]
+      required: ["id", "title", "description"]
     }
   },
   {
@@ -103,10 +103,9 @@ export const MCP_TOOLS = [
         id: { type: "string", description: "ID duy nhất của nhân vật" },
         name: { type: "string", description: "Tên nhân vật" },
         other_info: { type: "string", description: "Thông tin mô tả thêm, ví dụ: ngoại hình, tính cách, kỹ năng (định dạng JSON hoặc Text)" },
-        storyverse_id: { type: "string", description: "ID của vũ trụ cốt truyện mà nhân vật thuộc về" },
-        author: { type: "string", description: "Username của tác giả tạo nhân vật" }
+        storyverse_id: { type: "string", description: "ID của vũ trụ cốt truyện mà nhân vật thuộc về" }
       },
-      required: ["id", "name", "other_info", "storyverse_id", "author"]
+      required: ["id", "name", "other_info", "storyverse_id"]
     }
   },
   {
@@ -213,13 +212,24 @@ export const MCP_TOOLS = [
     inputSchema: {
       type: "object",
       properties: {
-        author: { type: "string", description: "Username người bình luận" },
         content: { type: "string", description: "Nội dung bình luận" },
         target_type: { type: "string", enum: ["storybook", "storyverse", "character"], description: "Loại đối tượng nhận bình luận" },
         target_id: { type: "string", description: "ID của đối tượng nhận bình luận" },
         reply_to: { type: "string", description: "ID của bình luận được trả lời (tùy chọn)" }
       },
-      required: ["author", "content", "target_type", "target_id"]
+      required: ["content", "target_type", "target_id"]
+    }
+  },
+  {
+    name: "get_comments",
+    description: "Lấy danh sách bình luận của một thực thể (bộ truyện, vũ trụ, hoặc nhân vật), bao gồm cả các phản hồi (replies) theo cấu trúc cây.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        target_type: { type: "string", enum: ["storybook", "storyverse", "character"], description: "Loại đối tượng" },
+        target_id: { type: "string", description: "ID của đối tượng" }
+      },
+      required: ["target_type", "target_id"]
     }
   },
   {
@@ -240,9 +250,9 @@ export async function executeMcpTool(name: string, args: any): Promise<any> {
   try {
     switch (name) {
       case "create_storybook_info": {
-        const { id, title, description, authors, categories, allow_other_author_edit, storyverse_id } = args;
-        const res = await db.createStorybook(id, title, description, authors, categories, allow_other_author_edit, storyverse_id || null);
-        return { success: true, storybook: res };
+        const { id, title, description, categories, allow_other_author_edit, storyverse_id } = args;
+        const res = await db.createStorybook(id, title, description, "AI Content Generated", categories, allow_other_author_edit, storyverse_id || null);
+        return { success: true, storybook: res, url: `${BASE_URL}/storybook/${id}` };
       }
 
       case "get_storybook_info": {
@@ -255,7 +265,7 @@ export async function executeMcpTool(name: string, args: any): Promise<any> {
       case "create_or_edit_chapter": {
         const { storybook_id, chapter_number, title, content, summary } = args;
         const res = await db.createOrEditChapter(storybook_id, chapter_number, title, content, summary);
-        return { success: true, chapter: { ...res, content: "[Hidden Content in output]" } };
+        return { success: true, chapter: { ...res, content: "[Hidden Content in output]" }, url: `${BASE_URL}/storybook/${storybook_id}/chapter/${chapter_number}` };
       }
 
       case "get_storybook_chapter": {
@@ -273,9 +283,9 @@ export async function executeMcpTool(name: string, args: any): Promise<any> {
       }
 
       case "create_storyverse": {
-        const { id, title, description, author } = args;
-        const res = await db.createStoryverse(id, title, description, author);
-        return { success: true, storyverse: res };
+        const { id, title, description } = args;
+        const res = await db.createStoryverse(id, title, description, "AI Content Generated");
+        return { success: true, storyverse: res, url: `${BASE_URL}/storyverses/${id}` };
       }
 
       case "edit_storyverse_info": {
@@ -285,9 +295,9 @@ export async function executeMcpTool(name: string, args: any): Promise<any> {
       }
 
       case "create_shared_character": {
-        const { id, name: charName, other_info, storyverse_id, author } = args;
-        const res = await db.createSharedCharacter(id, charName, other_info, storyverse_id, author);
-        return { success: true, character: res };
+        const { id, name: charName, other_info, storyverse_id } = args;
+        const res = await db.createSharedCharacter(id, charName, other_info, storyverse_id, "AI Content Generated");
+        return { success: true, character: res, url: `${BASE_URL}/storyverses/${storyverse_id}` };
       }
 
       case "delete_storybook": {
@@ -373,10 +383,16 @@ export async function executeMcpTool(name: string, args: any): Promise<any> {
       }
 
       case "comment_to": {
-        const { author, content, reply_to, target_type, target_id } = args;
+        const { content, reply_to, target_type, target_id } = args;
         const commentId = `comment_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-        const res = await db.addComment(commentId, author, content, reply_to || null, target_type, target_id);
+        const res = await db.addComment(commentId, "AI", content, reply_to || null, target_type, target_id);
         return { success: true, comment: res };
+      }
+
+      case "get_comments": {
+        const { target_type, target_id } = args;
+        const comments = await db.getCommentsForTarget(target_type, target_id);
+        return { success: true, target_type, target_id, comments };
       }
 
       case "get_storybook_chapters_summaries": {
@@ -399,7 +415,7 @@ export async function executeMcpTool(name: string, args: any): Promise<any> {
   }
 }
 
-// Handler for JSON-RPC
+// Handler for JSON-RPC (Streamable HTTP)
 export async function handleMcpRequest(body: any): Promise<any> {
   const { jsonrpc, method, params, id } = body;
 
@@ -407,21 +423,39 @@ export async function handleMcpRequest(body: any): Promise<any> {
     return {
       jsonrpc: "2.0",
       error: { code: -32600, message: "Invalid Request" },
-      id: id || null
+      id: id ?? null
     };
   }
 
+  // Notifications have no id — process but return null (202 No Content)
+  const isNotification = id === undefined;
+
+  if (method === "initialize") {
+    const response = {
+      jsonrpc: "2.0",
+      result: {
+        protocolVersion: "2025-03-26",
+        capabilities: { tools: {} },
+        serverInfo: { name: "storybook-mcp", version: "1.0.0" }
+      },
+      id
+    };
+    return isNotification ? null : response;
+  }
+
   if (method === "tools/list") {
-    return {
+    const response = {
       jsonrpc: "2.0",
       result: { tools: MCP_TOOLS },
       id
     };
+    return isNotification ? null : response;
   }
 
   if (method === "tools/call") {
     const { name, arguments: args } = params || {};
     if (!name) {
+      if (isNotification) return null;
       return {
         jsonrpc: "2.0",
         error: { code: -32602, message: "Invalid Params: missing tool name" },
@@ -430,7 +464,7 @@ export async function handleMcpRequest(body: any): Promise<any> {
     }
 
     const result = await executeMcpTool(name, args || {});
-    return {
+    const response = {
       jsonrpc: "2.0",
       result: {
         content: [
@@ -442,7 +476,10 @@ export async function handleMcpRequest(body: any): Promise<any> {
       },
       id
     };
+    return isNotification ? null : response;
   }
+
+  if (isNotification) return null;
 
   return {
     jsonrpc: "2.0",
