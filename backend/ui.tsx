@@ -8,3 +8,7 @@ export { renderAdminPanel } from "./ui/admin.tsx";
 export { renderProfilePage, renderSettingsPage } from "./ui/profile_settings.tsx";
 export { renderNotificationsPage } from "./ui/notifications.tsx";
 export { renderStorybooksPage } from "./ui/storybooks.tsx";
+export { renderCharactersPage } from "./ui/characters.tsx";
+export { renderCreateStorybook } from "./ui/create_storybook.tsx";
+export { renderCreateStoryverse } from "./ui/create_storyverse.tsx";
+export { renderCreateCharacter } from "./ui/create_character.tsx";

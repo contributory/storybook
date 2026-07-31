@@ -1,4 +1,4 @@
-import { assertEquals, assertExists } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { assertEquals, assertExists, assertNotEquals, assert } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import * as db from "../backend/db.ts";
 import { executeMcpTool, handleMcpRequest } from "../backend/mcp.ts";
 import app from "../backend/app.ts";
@@ -110,6 +110,259 @@ Deno.test({
     assertEquals(textOutput.success, true);
     assertEquals(textOutput.chapters_summaries.length, 2);
     assertEquals(textOutput.chapters_summaries[0].summary, "Tóm tắt một");
+  }
+});
+
+Deno.test({
+  name: "MCP Storyverse/Character FK Fix Test",
+  fn: async () => {
+    // Regression test for the FK constraint bug:
+    // MCP tools previously inserted `user.ai_author_name || "AI"` as author,
+    // which broke the FOREIGN KEY on users(username). They now use user.username.
+    const username = `verse_user_${Date.now()}`;
+    // admin=true (enough for sensitive tools), owner=false so cleanup deleteUser works
+    const user = await db.createUser(username, "Verse Fix User", "pwd", true, false);
+    // ai_author_name defaults to "" — exactly the scenario that used to fail
+    assertEquals(user.ai_author_name, "");
+
+    // 1. create_storyverse via MCP handler must now succeed
+    const verseId = `verse_${Date.now()}`;
+    const verseRes = await executeMcpTool("create_storyverse", {
+      id: verseId,
+      title: "Verse FK Fix",
+      description: "Regression: FK fix"
+    }, user);
+    assertEquals(verseRes.success, true, `create_storyverse failed: ${JSON.stringify(verseRes)}`);
+    assertEquals(verseRes.storyverse.author, username);
+
+    // 2. create_character via MCP handler must succeed
+    const charId = `char_${Date.now()}`;
+    const charRes = await executeMcpTool("create_character", {
+      id: charId,
+      name: "Hero FK Fix",
+      description: "Test character",
+      storyverse_id: verseId
+    }, user);
+    assertEquals(charRes.success, true, `create_character failed: ${JSON.stringify(charRes)}`);
+    assertEquals(charRes.character.author, username);
+
+    // 3. create_storybook_info author attribution fix (previously stored "AI")
+    const bookId = `book_${Date.now()}`;
+    const bookRes = await executeMcpTool("create_storybook_info", {
+      id: bookId,
+      title: "Book FK Fix",
+      description: "Regression: author attribution",
+      categories: "Test",
+      allow_other_author_edit: true,
+      storyverse_id: verseId
+    }, user);
+    assertEquals(bookRes.success, true, `create_storybook_info failed: ${JSON.stringify(bookRes)}`);
+    assertEquals(bookRes.storybook.authors, username);
+
+    // 4. get_user now reports created content correctly (was 0 due to "AI" author)
+    const userRes = await executeMcpTool("get_user", { username }, user);
+    assertEquals(userRes.success, true);
+    assertEquals(userRes.user.created_storybook, 1);
+    assertEquals(userRes.user.created_storyverse, 1);
+
+    // 5. get_storyverse returns the linked storybook
+    const svRes = await executeMcpTool("get_storyverse", { storyverse_id: verseId }, user);
+    assertEquals(svRes.success, true);
+    assertEquals(svRes.storyverse.storybook_list.length, 1);
+
+    // Cleanup
+    assertEquals(await db.deleteCharacter(charId), true);
+    assertEquals(await db.deleteStorybook(bookId), true);
+    assertEquals(await db.deleteStoryverse(verseId), true);
+    assertEquals(await db.deleteUser(username), true);
+  }
+});
+
+Deno.test({
+  name: "MCP New List/Create/Edit Tools Test",
+  fn: async () => {
+    // Admin (non-owner) user to exercise sensitive create_user + list tools
+    const adminName = `admin_${Date.now()}`;
+    const admin = await db.createUser(adminName, "Admin Tool User", "pwd", true, false);
+
+    // 1. create_user via MCP (admin-only)
+    const newName = `created_${Date.now()}`;
+    const createUserRes = await executeMcpTool("create_user", {
+      username: newName,
+      password: "secret123",
+      display_name: "Created Via MCP"
+    }, admin);
+    assertEquals(createUserRes.success, true, JSON.stringify(createUserRes));
+    assertEquals(createUserRes.user.username, newName);
+    assertEquals(createUserRes.user.is_admin, false);
+    // password must be hashed, not plaintext
+    const createdUser = await db.getUserByUsername(newName);
+    assertExists(createdUser);
+    assertNotEquals(createdUser.password_hash, "secret123");
+
+    // 2. Duplicate username should fail
+    const dupRes = await executeMcpTool("create_user", { username: newName, password: "secret123" }, admin);
+    assertEquals(dupRes.success, false);
+
+    // 3. Non-admin cannot create_user
+    const normalName = `normal_${Date.now()}`;
+    const normal = await db.createUser(normalName, "Normal User", "pwd", false, false);
+    const forbidden = await executeMcpTool("create_user", { username: `x_${Date.now()}`, password: "secret123" }, normal);
+    assertEquals(forbidden.success, false);
+    assert(forbidden.error.includes("Forbidden"));
+
+    // 4. get_users with pagination + filter_by_user (sanitized output)
+    const usersRes = await executeMcpTool("get_users", { length: 2, page: 1, filter_by_user: newName }, admin);
+    assertEquals(usersRes.success, true);
+    assertEquals(usersRes.total, 1);
+    assertEquals(usersRes.users.length, 1);
+    assertEquals(usersRes.users[0].username, newName);
+    assertEquals(usersRes.users[0].password_hash, undefined);
+    assertEquals(usersRes.users[0].api_token, undefined);
+
+    // 5. Create storyverse + storybook + character via MCP for list tests
+    const verseId = `list_verse_${Date.now()}`;
+    const verseRes = await executeMcpTool("create_storyverse", { id: verseId, title: "List Verse", description: "d" }, admin);
+    assertEquals(verseRes.success, true, JSON.stringify(verseRes));
+
+    const bookId = `list_book_${Date.now()}`;
+    const bookRes = await executeMcpTool("create_storybook_info", { id: bookId, title: "List Book", description: "d", categories: "Test", allow_other_author_edit: false, storyverse_id: verseId }, admin);
+    assertEquals(bookRes.success, true, JSON.stringify(bookRes));
+
+    const charId = `list_char_${Date.now()}`;
+    const charRes = await executeMcpTool("create_character", { id: charId, name: "List Char", description: "info", storyverse_id: verseId }, admin);
+    assertEquals(charRes.success, true, JSON.stringify(charRes));
+
+    // 6. get_storybooks with filter_by_user
+    const booksRes = await executeMcpTool("get_storybooks", { length: 5, page: 1, filter_by_user: adminName }, admin);
+    assertEquals(booksRes.success, true);
+    assert(booksRes.storybooks.some(b => b.id === bookId));
+    assert(booksRes.total >= 1);
+
+    // 7. get_storyverses with filter_by_user
+    const versesRes = await executeMcpTool("get_storyverses", { length: 5, page: 1, filter_by_user: adminName }, admin);
+    assertEquals(versesRes.success, true);
+    assert(versesRes.storyverses.some(v => v.id === verseId));
+
+    // 8. get_character_by: by id
+    const byId = await executeMcpTool("get_character_by", { character_id: charId }, admin);
+    assertEquals(byId.success, true);
+    assertEquals(byId.character.id, charId);
+
+    // 9. get_character_by: by storyverse (paginated list)
+    const byVerse = await executeMcpTool("get_character_by", { storyverse_id: verseId, length: 10 }, admin);
+    assertEquals(byVerse.success, true);
+    assert(byVerse.characters.some(c => c.id === charId));
+
+    // 10. edit_character (partial update)
+    const editRes = await executeMcpTool("edit_character", { id: charId, name: "Renamed Char", description: "new info" }, admin);
+    assertEquals(editRes.success, true, JSON.stringify(editRes));
+    const updatedChar = await db.getCharacterById(charId);
+    assertExists(updatedChar);
+    assertEquals(updatedChar.name, "Renamed Char");
+    assertEquals(updatedChar.description, "new info");
+
+    // edit with no fields → error
+    const noFields = await executeMcpTool("edit_character", { id: charId }, admin);
+    assertEquals(noFields.success, false);
+
+    // Cleanup
+    assertEquals(await db.deleteCharacter(charId), true);
+    assertEquals(await db.deleteStorybook(bookId), true);
+    assertEquals(await db.deleteStoryverse(verseId), true);
+    assertEquals(await db.deleteUser(newName), true);
+    assertEquals(await db.deleteUser(adminName), true);
+    assertEquals(await db.deleteUser(normalName), true);
+  }
+});
+
+Deno.test({
+  name: "MCP Optional Fields (des/avatar/ost, empty description/content) Test",
+  fn: async () => {
+    const username = `opt_${Date.now()}`;
+    const user = await db.createUser(username, "Opt User", "pwd", true, false);
+
+    // 1. create_user with des + avatar via MCP
+    const newName = `opt_created_${Date.now()}`;
+    const createdRes = await executeMcpTool("create_user", {
+      username: newName,
+      password: "secret123",
+      des: "Mô tả người dùng",
+      avatar: "https://example.com/avatar.png"
+    }, user);
+    assertEquals(createdRes.success, true, JSON.stringify(createdRes));
+    assertEquals(createdRes.user.des, "Mô tả người dùng");
+    assertEquals(createdRes.user.avatar, "https://example.com/avatar.png");
+    const createdUser = await db.getUserByUsername(newName);
+    assertExists(createdUser);
+    assertEquals(createdUser.des, "Mô tả người dùng");
+    assertEquals(createdUser.avatar, "https://example.com/avatar.png");
+
+    // 2. get_users returns des/avatar
+    const usersRes = await executeMcpTool("get_users", { filter_by_user: newName }, user);
+    assertEquals(usersRes.success, true);
+    assertEquals(usersRes.users[0].des, "Mô tả người dùng");
+    assertEquals(usersRes.users[0].avatar, "https://example.com/avatar.png");
+
+    // 3. get_user returns des/avatar
+    const userRes = await executeMcpTool("get_user", { username: newName }, user);
+    assertEquals(userRes.success, true);
+    assertEquals(userRes.user.des, "Mô tả người dùng");
+    assertEquals(userRes.user.avatar, "https://example.com/avatar.png");
+
+    // 4. create_storyverse WITHOUT description (empty allowed)
+    const verseId = `opt_verse_${Date.now()}`;
+    const verseRes = await executeMcpTool("create_storyverse", { id: verseId, title: "Opt Verse" }, user);
+    assertEquals(verseRes.success, true, JSON.stringify(verseRes));
+    assertEquals(verseRes.storyverse.description, "");
+
+    // 5. create_storybook_info WITHOUT description + WITH ost
+    const ost = '[{"title":"OST 1","url":"https://example.com/ost1"},{"title":"OST 2","url":"https://example.com/ost2"}]';
+    const bookId = `opt_book_${Date.now()}`;
+    const bookRes = await executeMcpTool("create_storybook_info", {
+      id: bookId,
+      title: "Opt Book",
+      categories: "Test",
+      allow_other_author_edit: false,
+      ost
+    }, user);
+    assertEquals(bookRes.success, true, JSON.stringify(bookRes));
+    assertEquals(bookRes.storybook.description, "");
+    const savedBook = await db.getStorybookById(bookId);
+    assertExists(savedBook);
+    assertEquals(savedBook.ost, ost);
+
+    // 6. create_or_edit_chapter WITHOUT content/summary (empty allowed)
+    const chRes = await executeMcpTool("create_or_edit_chapter", {
+      storybook_id: bookId,
+      chapter_number: 1,
+      title: "Chương trống"
+    }, user);
+    assertEquals(chRes.success, true, JSON.stringify(chRes));
+    const ch = await db.getChapter(bookId, 1);
+    assertExists(ch);
+    assertEquals(ch.content, "");
+    assertEquals(ch.summary, "");
+
+    // 7. get_storybooks returns ost
+    const booksRes = await executeMcpTool("get_storybooks", { filter_by_user: username }, user);
+    assertEquals(booksRes.success, true);
+    const found = booksRes.storybooks.find(b => b.id === bookId);
+    assertExists(found);
+    assertEquals(found.ost, ost);
+
+    // 8. updateUserSettings preserves des/avatar (partial update path)
+    const ok = await db.updateUserSettings(username, "Opt User 2", true, "AI Writer");
+    assertEquals(ok, true);
+    const updatedUser = await db.getUserByUsername(username);
+    assertExists(updatedUser);
+    assertEquals(updatedUser.des, ""); // untouched when not provided
+
+    // Cleanup
+    assertEquals(await db.deleteStorybook(bookId), true);
+    assertEquals(await db.deleteStoryverse(verseId), true);
+    assertEquals(await db.deleteUser(newName), true);
+    assertEquals(await db.deleteUser(username), true);
   }
 });
 

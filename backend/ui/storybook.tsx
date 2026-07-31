@@ -3,6 +3,7 @@ import { html } from "npm:hono/html";
 import * as db from "../db.ts";
 
 import { renderCommentsArea } from "./comments.tsx";
+import { renderMarkdown } from "./markdown.ts";
 
 // Storybook detail page View
 export function renderStorybookDetail(book: db.Storybook, chapters: Omit<db.Chapter, "content">[], user: db.User | null) {
@@ -17,11 +18,41 @@ export function renderStorybookDetail(book: db.Storybook, chapters: Omit<db.Chap
                 <img src="${book.thumbnail_url}" class="w-full h-full object-cover" />
             </div>
             ` : ""}
-            <div class="flex-grow">
-                <div class="flex flex-wrap gap-1.5 mb-3">
-                    ${book.categories.split(",").map(c => html`
-                    <span class="px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-semibold">${c.trim()}</span>
-                    `)}
+            <div class="flex-grow min-w-0">
+                <div class="flex items-start justify-between gap-4 mb-3">
+                    <div class="flex flex-wrap gap-1.5">
+                        ${book.categories.split(",").map(c => html`
+                        <span class="px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-semibold">${c.trim()}</span>
+                        `)}
+                    </div>
+
+                    <!-- Side action buttons (in flow so they never overlap the title/description) -->
+                    <div class="flex flex-col space-y-2 items-end flex-shrink-0">
+                        <button onclick="toggleLike('storybook', '${book.id}', this)" class="px-3.5 py-1.5 bg-gray-200 dark:bg-gray-800/80 hover:bg-gray-300 dark:hover:bg-gray-700/80 border border-gray-300 dark:border-gray-700/60 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all">
+                            <i class="fa-regular fa-heart"></i>
+                            <span>${book.likes_count || 0}</span>
+                        </button>
+
+                        ${allowEdit ? html`
+                        <span class="px-2 py-1 rounded bg-green-500/10 text-green-400 border border-green-500/20 text-[10px] font-bold text-center"><i class="fa-solid fa-users mr-1"></i> Cho phép đồng tác giả</span>
+                        ` : ""}
+                        ${book.storyverse_id ? html`
+                        <a href="/create/character?storyverse_id=${book.storyverse_id}" class="px-3.5 py-1.5 bg-amber-500/10 hover:bg-amber-500 border border-amber-500/20 hover:text-black text-amber-400 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all">
+                            <i class="fa-solid fa-user-plus"></i>
+                            <span>Tạo nhân vật</span>
+                        </a>
+                        ` : ""}
+                        ${user && (book.authors.toLowerCase().includes(user.username.toLowerCase()) || user.is_admin || user.is_owner) ? html`
+                        <a href="/create/storybook?id=${book.id}" class="px-3.5 py-1.5 bg-gray-250 dark:bg-gray-800 border border-gray-300 dark:border-gray-700/60 hover:bg-gray-300 dark:hover:bg-gray-750 text-gray-800 dark:text-gray-200 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                            <span>Sửa truyện</span>
+                        </a>
+                        <button onclick="deleteBook('${book.id}')" class="px-3.5 py-1.5 bg-red-500/10 hover:bg-red-550 border border-red-500/20 text-red-400 hover:text-black rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all">
+                            <i class="fa-solid fa-trash-can"></i>
+                            <span>Xóa truyện</span>
+                        </button>
+                        ` : ""}
+                    </div>
                 </div>
 
                 <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white leading-tight mb-2">${book.title}</h1>
@@ -29,47 +60,25 @@ export function renderStorybookDetail(book: db.Storybook, chapters: Omit<db.Chap
                     Bởi: <span class="font-medium text-gray-700 dark:text-gray-300">${book.authors}</span> &bull; Phát hành: ${new Date(book.created_at).toLocaleDateString("vi-VN")}
                 </p>
 
-                <p class="text-gray-700 dark:text-gray-300 text-sm leading-relaxed">${book.description}</p>
+                <div class="md text-sm leading-relaxed">${renderMarkdown(book.description)}</div>
 
-            <div class="flex flex-wrap gap-3 mt-6">
-                ${chapters && chapters.length > 0 ? html`
-                <a href="/storybook/${book.id}/chapter/1" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-black font-bold text-xs rounded-xl shadow-lg shadow-yellow-500/10 flex items-center space-x-1.5 transition-colors">
-                    <i class="fa-solid fa-book-open"></i>
-                    <span>Đọc từ đầu (Chương 1)</span>
-                </a>
-                ` : html`
-                <button class="px-4 py-2 bg-gray-200 dark:bg-gray-800 text-gray-500 dark:text-gray-500 text-xs rounded-xl cursor-not-allowed font-semibold" disabled>Chưa có chương</button>
-                `}
+                <div class="flex flex-wrap gap-3 mt-6">
+                    ${chapters && chapters.length > 0 ? html`
+                    <a href="/storybook/${book.id}/chapter/1" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-black font-bold text-xs rounded-xl shadow-lg shadow-yellow-500/10 flex items-center space-x-1.5 transition-colors">
+                        <i class="fa-solid fa-book-open"></i>
+                        <span>Đọc từ đầu (Chương 1)</span>
+                    </a>
+                    ` : html`
+                    <button class="px-4 py-2 bg-gray-200 dark:bg-gray-800 text-gray-500 dark:text-gray-500 text-xs rounded-xl cursor-not-allowed font-semibold" disabled>Chưa có chương</button>
+                    `}
 
-                ${book.storyverse_id ? html`
-                <a href="/storyverses/${book.storyverse_id}" class="px-4 py-2 bg-gray-200 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 hover:bg-gray-300 dark:hover:bg-gray-700/80 text-gray-900 dark:text-white font-semibold text-xs rounded-xl transition-colors flex items-center space-x-1.5">
-                    <i class="fa-solid fa-earth-asia text-amber-400"></i>
-                    <span>Vũ trụ cốt truyện</span>
-                </a>
-                ` : ""}
-            </div>
-
-            </div>
-            <!-- Side action floats -->
-            <div class="absolute top-8 right-8 flex flex-col space-y-2">
-                <button onclick="toggleLike('storybook', '${book.id}', this)" class="px-3.5 py-1.5 bg-gray-200 dark:bg-gray-800/80 hover:bg-gray-300 dark:hover:bg-gray-700/80 border border-gray-300 dark:border-gray-700/60 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all">
-                    <i class="fa-regular fa-heart"></i>
-                    <span>${book.likes_count || 0}</span>
-                </button>
-
-                ${allowEdit ? html`
-                <span class="px-2 py-1 rounded bg-green-500/10 text-green-400 border border-green-500/20 text-[10px] font-bold text-center"><i class="fa-solid fa-users mr-1"></i> Cho phép đồng tác giả</span>
-                ` : ""}
-                ${user && (book.authors.toLowerCase().includes(user.username.toLowerCase()) || user.is_admin || user.is_owner) ? html`
-                <button onclick="openEditBookModal()" class="px-3.5 py-1.5 bg-gray-250 dark:bg-gray-800 border border-gray-300 dark:border-gray-700/60 hover:bg-gray-300 dark:hover:bg-gray-750 text-gray-800 dark:text-gray-200 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all">
-                    <i class="fa-solid fa-pen-to-square"></i>
-                    <span>Sửa truyện</span>
-                </button>
-                <button onclick="deleteBook('${book.id}')" class="px-3.5 py-1.5 bg-red-500/10 hover:bg-red-550 border border-red-500/20 text-red-400 hover:text-black rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all">
-                    <i class="fa-solid fa-trash-can"></i>
-                    <span>Xóa truyện</span>
-                </button>
-                ` : ""}
+                    ${book.storyverse_id ? html`
+                    <a href="/storyverses/${book.storyverse_id}" class="px-4 py-2 bg-gray-200 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 hover:bg-gray-300 dark:hover:bg-gray-700/80 text-gray-900 dark:text-white font-semibold text-xs rounded-xl transition-colors flex items-center space-x-1.5">
+                        <i class="fa-solid fa-earth-asia text-amber-400"></i>
+                        <span>Vũ trụ cốt truyện</span>
+                    </a>
+                    ` : ""}
+                </div>
             </div>
         </div>
 
@@ -134,137 +143,7 @@ export function renderStorybookDetail(book: db.Storybook, chapters: Omit<db.Chap
             </div>
         </div>
 
-
-        <!-- Edit Storybook Modal -->
-        <div id="editBookModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
-            <div class="bg-white dark:bg-[#161925] border border-gray-200 dark:border-gray-800 rounded-2xl w-full max-w-md p-8 relative shadow-2xl transform scale-95 transition-transform duration-300 text-left max-h-[90vh] overflow-y-auto">
-                <button onclick="closeEditBookModal()" class="absolute top-4 right-4 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:text-white">
-                    <i class="fa-solid fa-xmark text-xl"></i>
-                </button>
-
-                <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Chỉnh sửa truyện</h3>
-
-                <form onsubmit="handleEditBookSubmit(event, '${book.id}')" class="space-y-4">
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5">Tiêu đề bộ truyện</label>
-                        <input type="text" id="editBookTitle" required value="${book.title}" class="w-full bg-gray-50 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5">Mô tả cốt truyện</label>
-                        <textarea id="editBookDescription" required rows="3" class="w-full bg-gray-50 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 rounded-xl p-3 text-gray-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors">${book.description}</textarea>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5">Thể loại</label>
-                        <input type="text" id="editBookCategories" required value="${book.categories}" class="w-full bg-gray-50 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors">
-                    </div>
-                    <div class="flex items-center space-x-3 pt-2">
-                        <input type="checkbox" id="editBookAllowEdit" ${book.allow_other_author_edit ? "checked" : ""} class="w-4 h-4 rounded border-gray-200 dark:border-gray-800 text-amber-500 focus:ring-amber-500 focus:ring-opacity-20 bg-gray-50 dark:bg-[#0f111a]">
-                        <label for="editBookAllowEdit" class="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">Cho phép đồng tác giả</label>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-650 dark:text-gray-400 uppercase tracking-wider mb-1.5">Danh sách nhân vật chính (JSON Array)</label>
-                        <textarea id="editBookCharacters" rows="4" class="w-full bg-gray-50 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 rounded-xl p-3 text-xs font-mono text-amber-500/90 focus:outline-none focus:border-amber-500" placeholder='[{"id":"ton-ngo-khong","name":"Tôn Ngộ Không","role":"Nhân vật chính","description":"Đại náo thiên cung..."}]'>${book.characters}</textarea>
-                        <span class="text-[10px] text-gray-500 dark:text-gray-500 mt-1 block">* Để trống "id" cho các nhân vật thông thường. Điền "id" của nhân vật dùng chung trong vũ trụ để đối chiếu liên kết.</span>
-                    </div>
-
-                    <!-- Thumbnail Upload -->
-                    <div class="border-t border-gray-200 dark:border-gray-800/80 pt-4 mt-2">
-                        <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5">Upload ảnh bìa (Thumbnail)</label>
-                        <input type="file" id="editBookFile" accept="image/*" class="w-full text-xs text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-amber-500/10 file:text-amber-400 hover:file:bg-amber-500/20">
-                    </div>
-
-                    <div id="editBookError" class="text-red-400 text-xs hidden"></div>
-
-                    <button type="submit" class="w-full py-3 bg-gradient-to-r from-amber-500 to-yellow-400 text-black font-bold rounded-xl hover:brightness-110 transition-all shadow-lg shadow-yellow-500/10 mt-6">
-                        Lưu thay đổi
-                    </button>
-                </form>
-            </div>
-        </div>
-
         <script>
-            function openEditBookModal() {
-                const modal = document.getElementById('editBookModal');
-                modal.classList.remove('hidden');
-                setTimeout(() => {
-                    modal.classList.remove('opacity-0');
-                    modal.querySelector('div').classList.remove('scale-95');
-                }, 10);
-            }
-
-            function closeEditBookModal() {
-                const modal = document.getElementById('editBookModal');
-                modal.classList.add('opacity-0');
-                modal.querySelector('div').classList.add('scale-95');
-                setTimeout(() => modal.classList.add('hidden'), 300);
-            }
-
-            async function handleEditBookSubmit(e, bookId) {
-                e.preventDefault();
-                const title = document.getElementById('editBookTitle').value.trim();
-                const description = document.getElementById('editBookDescription').value.trim();
-                const categories = document.getElementById('editBookCategories').value.trim();
-                const allow_other_author_edit = document.getElementById('editBookAllowEdit').checked;
-                const charactersVal = document.getElementById('editBookCharacters').value.trim() || '[]';
-                const fileInput = document.getElementById('editBookFile');
-                const errDiv = document.getElementById('editBookError');
-
-                errDiv.classList.add('hidden');
-
-                // Validate JSON
-                try {
-                    const parsed = JSON.parse(charactersVal);
-                    if (!Array.isArray(parsed)) {
-                        throw new Error('Dữ liệu nhân vật phải là một mảng []');
-                    }
-                } catch (jsonErr) {
-                    errDiv.innerText = 'Dữ liệu nhân vật JSON không hợp lệ: ' + jsonErr.message;
-                    errDiv.classList.remove('hidden');
-                    return;
-                }
-
-                errDiv.classList.add('hidden');
-
-                try {
-                    // Update metadata
-                    const res = await fetch(\`/api/storybooks/\${bookId}\`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ title, description, categories, allow_other_author_edit, characters: charactersVal })
-                    });
-                    const data = await res.json();
-                    if (!data.success) {
-                        errDiv.innerText = data.error || 'Có lỗi xảy ra.';
-                        errDiv.classList.remove('hidden');
-                        return;
-                    }
-
-                    // Handle thumbnail upload if file exists
-                    if (fileInput.files.length > 0) {
-                        const formData = new FormData();
-                        formData.append('file', fileInput.files[0]);
-                        formData.append('type', 'storybook');
-                        formData.append('id', bookId);
-
-                        const uploadRes = await fetch('/api/upload-thumbnail', {
-                            method: 'POST',
-                            body: formData
-                        });
-                        const uploadData = await uploadRes.json();
-                        if (!uploadData.success) {
-                            errDiv.innerText = 'Cập nhật truyện thành công nhưng upload ảnh thất bại: ' + uploadData.error;
-                            errDiv.classList.remove('hidden');
-                            return;
-                        }
-                    }
-
-                    window.location.reload();
-                } catch (err) {
-                    console.error(err);
-                }
-            }
-
             async function deleteBook(bookId) {
                 if (!confirm('Bạn có chắc chắn muốn xóa vĩnh viễn bộ truyện này cùng tất cả các chương? Thao tác này không thể hoàn tác!')) return;
                 try {
@@ -372,8 +251,8 @@ export function renderChapterReader(book: db.Storybook, chapter: db.Chapter, nex
 
 
         <!-- Reading Content Box -->
-        <article id="readerContent" class="reader-font bg-white dark:bg-[#161925]/25 border border-gray-200 dark:border-gray-800/50 rounded-3xl p-6 sm:p-10 text-gray-800 dark:text-gray-200 text-lg sm:text-xl leading-loose text-justify whitespace-pre-wrap selection:bg-amber-500/20">
-            ${chapter.content}
+        <article id="readerContent" class="reader-font md bg-white dark:bg-[#161925]/25 border border-gray-200 dark:border-gray-800/50 rounded-3xl p-6 sm:p-10 text-gray-800 dark:text-gray-200 text-lg sm:text-xl leading-loose text-justify selection:bg-amber-500/20">
+            ${renderMarkdown(chapter.content)}
         </article>
 
         <!-- Chapter Navigation Bar -->

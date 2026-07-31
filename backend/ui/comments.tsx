@@ -56,7 +56,7 @@ export function renderCommentsArea(target_type: string, target_id: string) {
                     repliesHtml += \`<div class="flex space-x-3 p-3 bg-gray-100 dark:bg-[#0c0e16]/50 border border-gray-200 dark:border-gray-850 rounded-lg ml-6">
                         <div class="flex-grow">
                             <div class="flex items-center justify-between text-[11px] mb-1">
-                                <span class="font-bold text-gray-700 dark:text-gray-300">\${rep.author_display_name} <span class="text-amber-500 font-medium">@\${rep.author}</span></span>
+                                <span class="font-bold text-gray-700 dark:text-gray-300">\${rep.author_display_name} <a href="/profile/\${rep.author}" class="text-amber-500 font-medium hover:underline">@\${rep.author}</a></span>
                                 <span class="text-gray-500 dark:text-gray-500">\${new Date(rep.created_at).toLocaleDateString('vi-VN')}</span>
                             </div>
                             <p class="text-xs text-gray-700 dark:text-gray-300">\${rep.content}</p>
@@ -72,7 +72,7 @@ export function renderCommentsArea(target_type: string, target_id: string) {
                 </div>
                 <div class="flex-grow text-left">
                     <div class="flex items-center justify-between text-xs mb-1">
-                        <span class="font-bold text-gray-700 dark:text-gray-300">\${c.author_display_name} <span class="text-amber-500 font-medium">@\${c.author}</span></span>
+                        <span class="font-bold text-gray-700 dark:text-gray-300">\${c.author_display_name} <a href="/profile/\${c.author}" class="text-amber-500 font-medium hover:underline">@\${c.author}</a></span>
                         <span class="text-gray-500 dark:text-gray-500">\${new Date(c.created_at).toLocaleDateString('vi-VN')}</span>
                     </div>
                     <p class="text-sm text-gray-800 dark:text-gray-200 leading-relaxed">\${c.content}</p>

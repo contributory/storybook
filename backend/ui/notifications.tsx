@@ -1,8 +1,10 @@
 /** @jsxImportSource npm:hono@4.5.11/jsx */
 import { html } from "npm:hono/html";
 import * as db from "../db.ts";
+import { renderPagination } from "./pagination.tsx";
 
-export function renderNotificationsPage(notifications: db.Notification[]) {
+export function renderNotificationsPage(notifsResult: db.PageResult<db.Notification>) {
+  const notifications = notifsResult.items;
   return html`
     <div class="max-w-2xl mx-auto space-y-6 text-left">
         <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 pb-4">
@@ -41,6 +43,8 @@ export function renderNotificationsPage(notifications: db.Notification[]) {
             </div>
             `}
         </div>
+
+        ${renderPagination(notifsResult, "/notifications")}
     </div>
 
     <script>

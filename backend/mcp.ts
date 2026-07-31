@@ -11,13 +11,14 @@ export const MCP_TOOLS = [
       properties: {
         id: { type: "string", description: "ID duy nhất cho bộ truyện (ví dụ: 'tay-du-ky')" },
         title: { type: "string", description: "Tiêu đề bộ truyện" },
-        description: { type: "string", description: "Mô tả ngắn" },
+        description: { type: "string", description: "Mô tả ngắn (tùy chọn, có thể bỏ trống)" },
         categories: { type: "string", description: "Thể loại (cách nhau bởi dấu phẩy, ví dụ: 'Tiên Hiệp, Huyền Huyễn')" },
         allow_other_author_edit: { type: "boolean", description: "Cho phép tác giả khác chỉnh sửa nội dung" },
         storyverse_id: { type: "string", description: "ID của vũ trụ cốt truyện (tùy chọn)" },
-        characters: { type: "string", description: "Danh sách các nhân vật chính dưới dạng mảng JSON string, mỗi phần tử chứa {id: 'optional-shared-id', name: 'Tên', role: 'Vai trò', description: 'Mô tả'}. Ví dụ: '[{\"id\":\"ton-ngo-khong\",\"name\":\"Tôn Ngộ Không\",\"role\":\"Nhân vật chính\",\"description\":\"Tề Thiên Đại Thánh\"}]' (tùy chọn)" }
+        characters: { type: "string", description: "Danh sách các nhân vật chính dưới dạng mảng JSON string, mỗi phần tử chứa {id: 'optional-shared-id', name: 'Tên', role: 'Vai trò', description: 'Mô tả'}. Ví dụ: '[{\"id\":\"ton-ngo-khong\",\"name\":\"Tôn Ngộ Không\",\"role\":\"Nhân vật chính\",\"description\":\"Tề Thiên Đại Thánh\"}]' (tùy chọn)" },
+        ost: { type: "string", description: "Danh sách OST (bài hát/MV) của truyện dưới dạng mảng JSON string, mỗi phần tử có thể là chuỗi text/link hoặc {title, url}. Ví dụ: '[{\"title\":\"Tên bài hát\",\"url\":\"https://...\"}]' (tùy chọn, có thể bỏ trống)" }
       },
-      required: ["id", "title", "description", "categories", "allow_other_author_edit"]
+      required: ["id", "title", "categories", "allow_other_author_edit"]
     }
   },
   {
@@ -32,6 +33,31 @@ export const MCP_TOOLS = [
     }
   },
   {
+    name: "get_storybooks",
+    description: "Lấy danh sách bộ truyện (Storybook) với phân trang. Không bao gồm nội dung chương.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        length: { type: "integer", description: "Số kết quả tối đa mỗi trang (mặc định 10, tối đa 50)" },
+        page: { type: "integer", description: "Trang cần xem, bắt đầu từ 1 (mặc định 1)" },
+        filter_by_user: { type: "string", description: "Chỉ lấy bộ truyện của tác giả này (username, tùy chọn)" }
+      }
+    }
+  },
+  {
+    name: "search",
+    description: "Tìm kiếm nội dung trên hệ thống theo từ khóa. Có thể lọc theo loại: all (tất cả), storybook (bộ truyện), storyverse (vũ trụ), user (người dùng), character (nhân vật).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "Từ khóa tìm kiếm" },
+        type: { type: "string", enum: ["all", "storybook", "storyverse", "user", "character"], description: "Loại đối tượng cần tìm (mặc định: all)" },
+        limit: { type: "integer", description: "Số kết quả tối đa cho mỗi loại (mặc định 10, tối đa 50)" }
+      },
+      required: ["query"]
+    }
+  },
+  {
     name: "create_or_edit_chapter",
     description: "Tạo chương mới hoặc cập nhật một chương đã có, bao gồm cả phần tóm tắt hỗ trợ AI.",
     inputSchema: {
@@ -40,10 +66,10 @@ export const MCP_TOOLS = [
         storybook_id: { type: "string", description: "ID của bộ truyện" },
         chapter_number: { type: "integer", description: "Số chương (ví dụ: 1, 2, 3)" },
         title: { type: "string", description: "Tiêu đề chương" },
-        content: { type: "string", description: "Nội dung chương" },
-        summary: { type: "string", description: "Tóm tắt ngắn gọn của chương nhằm giúp AI viết tiếp mà không cần đọc lại toàn bộ" }
+        content: { type: "string", description: "Nội dung chương (tùy chọn, có thể bỏ trống)" },
+        summary: { type: "string", description: "Tóm tắt ngắn gọn của chương nhằm giúp AI viết tiếp mà không cần đọc lại toàn bộ (tùy chọn, có thể bỏ trống)" }
       },
-      required: ["storybook_id", "chapter_number", "title", "content"]
+      required: ["storybook_id", "chapter_number", "title"]
     }
   },
   {
@@ -70,6 +96,18 @@ export const MCP_TOOLS = [
     }
   },
   {
+    name: "get_storyverses",
+    description: "Lấy danh sách vũ trụ cốt truyện (Storyverse) với phân trang.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        length: { type: "integer", description: "Số kết quả tối đa mỗi trang (mặc định 10, tối đa 50)" },
+        page: { type: "integer", description: "Trang cần xem, bắt đầu từ 1 (mặc định 1)" },
+        filter_by_user: { type: "string", description: "Chỉ lấy vũ trụ của tác giả này (username, tùy chọn)" }
+      }
+    }
+  },
+  {
     name: "create_storyverse",
     description: "Tạo một vũ trụ cốt truyện (Storyverse) mới.",
     inputSchema: {
@@ -77,9 +115,9 @@ export const MCP_TOOLS = [
       properties: {
         id: { type: "string", description: "ID duy nhất cho vũ trụ (ví dụ: 'mcu')" },
         title: { type: "string", description: "Tên vũ trụ cốt truyện" },
-        description: { type: "string", description: "Mô tả chi tiết về thế giới, luật lệ trong vũ trụ" }
+        description: { type: "string", description: "Mô tả chi tiết về thế giới, luật lệ trong vũ trụ (tùy chọn, có thể bỏ trống)" }
       },
-      required: ["id", "title", "description"]
+      required: ["id", "title"]
     }
   },
   {
@@ -96,17 +134,45 @@ export const MCP_TOOLS = [
     }
   },
   {
-    name: "create_shared_character",
-    description: "Tạo một nhân vật dùng chung (Shared Character) thuộc một vũ trụ cốt truyện.",
+    name: "create_character",
+    description: "Tạo một nhân vật (Character) thuộc một vũ trụ cốt truyện.",
     inputSchema: {
       type: "object",
       properties: {
         id: { type: "string", description: "ID duy nhất của nhân vật" },
         name: { type: "string", description: "Tên nhân vật" },
-        other_info: { type: "string", description: "Thông tin mô tả thêm, ví dụ: ngoại hình, tính cách, kỹ năng (định dạng JSON hoặc Text)" },
+        description: { type: "string", description: "Thông tin mô tả, ví dụ: ngoại hình, tính cách, kỹ năng (định dạng JSON hoặc Text)" },
         storyverse_id: { type: "string", description: "ID của vũ trụ cốt truyện mà nhân vật thuộc về" }
       },
-      required: ["id", "name", "other_info", "storyverse_id"]
+      required: ["id", "name", "description", "storyverse_id"]
+    }
+  },
+  {
+    name: "get_character_by",
+    description: "Lấy nhân vật (Character). Truyền character_id để lấy chi tiết 1 nhân vật, storyverse_id để lấy danh sách nhân vật trong một vũ trụ, hoặc để trống để lấy tất cả (có phân trang).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        character_id: { type: "string", description: "ID của nhân vật cần lấy chi tiết (tùy chọn)" },
+        storyverse_id: { type: "string", description: "ID vũ trụ để lấy danh sách nhân vật thuộc vũ trụ đó (tùy chọn)" },
+        length: { type: "integer", description: "Số kết quả tối đa mỗi trang (mặc định 10, tối đa 50)" },
+        page: { type: "integer", description: "Trang cần xem, bắt đầu từ 1 (mặc định 1)" },
+        filter_by_user: { type: "string", description: "Chỉ lấy nhân vật của tác giả này (username, tùy chọn)" }
+      }
+    }
+  },
+  {
+    name: "edit_character",
+    description: "Chỉnh sửa thông tin một nhân vật (tên, mô tả, ảnh đại diện).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "string", description: "ID của nhân vật" },
+        name: { type: "string", description: "Tên mới (tùy chọn)" },
+        description: { type: "string", description: "Mô tả mới (tùy chọn)" },
+        thumbnail_url: { type: "string", description: "URL ảnh đại diện mới (tùy chọn)" }
+      },
+      required: ["id"]
     }
   },
   {
@@ -144,8 +210,8 @@ export const MCP_TOOLS = [
     }
   },
   {
-    name: "delete_shared_character",
-    description: "Xóa nhân vật dùng chung.",
+    name: "delete_character",
+    description: "Xóa nhân vật.",
     inputSchema: {
       type: "object",
       properties: {
@@ -174,6 +240,18 @@ export const MCP_TOOLS = [
     }
   },
   {
+    name: "get_users",
+    description: "Lấy danh sách người dùng với phân trang (không trả về mật khẩu / api token).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        length: { type: "integer", description: "Số kết quả tối đa mỗi trang (mặc định 10, tối đa 50)" },
+        page: { type: "integer", description: "Trang cần xem, bắt đầu từ 1 (mặc định 1)" },
+        filter_by_user: { type: "string", description: "Lọc theo username (tùy chọn)" }
+      }
+    }
+  },
+  {
     name: "edit_user_role",
     description: "Cập nhật quyền admin cho người dùng.",
     inputSchema: {
@@ -183,6 +261,22 @@ export const MCP_TOOLS = [
         is_admin: { type: "boolean", description: "True để cấp quyền admin, False để gỡ" }
       },
       required: ["username", "is_admin"]
+    }
+  },
+  {
+    name: "create_user",
+    description: "Tạo một tài khoản người dùng mới (yêu cầu quyền admin/owner).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        username: { type: "string", description: "Username mới (tối thiểu 3 ký tự)" },
+        password: { type: "string", description: "Mật khẩu (tối thiểu 4 ký tự)" },
+        display_name: { type: "string", description: "Tên hiển thị (tùy chọn, mặc định = username)" },
+        is_admin: { type: "boolean", description: "Cấp quyền admin (mặc định false)" },
+        des: { type: "string", description: "Giới thiệu ngắn về người dùng (tùy chọn, có thể bỏ trống)" },
+        avatar: { type: "string", description: "URL ảnh đại diện (tùy chọn, có thể bỏ trống)" }
+      },
+      required: ["username", "password"]
     }
   },
   {
@@ -250,12 +344,48 @@ export const MCP_TOOLS = [
 const SENSITIVE_TOOLS = [
   "edit_user_role",
   "delete_user",
+  "create_user",
   "delete_storybook",
   "delete_chapter",
   "delete_storyverse",
-  "delete_shared_character",
+  "delete_character",
   "delete_comment"
 ];
+
+// --- Helpers for list tools (pagination, filtering, password hashing) ---
+async function sha256(message: string): Promise<string> {
+  const msgBuffer = new TextEncoder().encode(message);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+function clampLength(v: any): number {
+  const n = Number(v);
+  if (Number.isNaN(n) || n <= 0) return 10;
+  return Math.min(Math.floor(n), 50);
+}
+
+function clampPage(v: any): number {
+  const n = Number(v);
+  if (Number.isNaN(n) || n < 1) return 1;
+  return Math.floor(n);
+}
+
+function paginate<T>(items: T[], length: number, page: number) {
+  const total = items.length;
+  const start = (page - 1) * length;
+  const itemsSlice = items.slice(start, start + length);
+  return {
+    items: itemsSlice,
+    count: itemsSlice.length,
+    total,
+    page,
+    length,
+    total_pages: total === 0 ? 0 : Math.ceil(total / length),
+    has_more: start + itemsSlice.length < total,
+  };
+}
 
 export async function executeMcpTool(name: string, args: any, user: db.User): Promise<any> {
   if (SENSITIVE_TOOLS.includes(name)) {
@@ -266,8 +396,8 @@ export async function executeMcpTool(name: string, args: any, user: db.User): Pr
   try {
     switch (name) {
       case "create_storybook_info": {
-        const { id, title, description, categories, allow_other_author_edit, storyverse_id, characters = "[]" } = args;
-        const res = await db.createStorybook(id, title, description, user.ai_author_name || "AI", categories, allow_other_author_edit, storyverse_id || null, "", typeof characters === "string" ? characters : JSON.stringify(characters));
+        const { id, title, description = "", categories, allow_other_author_edit, storyverse_id, characters = "[]", ost = "[]" } = args;
+        const res = await db.createStorybook(id, title, description, user.username, categories, allow_other_author_edit, storyverse_id || null, "", typeof characters === "string" ? characters : JSON.stringify(characters), typeof ost === "string" ? ost : JSON.stringify(ost));
         return { success: true, storybook: res, url: `${BASE_URL}/storybook/${id}` };
       }
 
@@ -278,8 +408,38 @@ export async function executeMcpTool(name: string, args: any, user: db.User): Pr
         return { success: true, storybook: book };
       }
 
+      case "get_storybooks": {
+        const length = clampLength(args.length);
+        const page = clampPage(args.page);
+        const filterByUser = args.filter_by_user ? String(args.filter_by_user).toLowerCase() : "";
+        const all = await db.getAllStorybooks();
+        const filtered = filterByUser ? all.filter(b => b.authors.toLowerCase().includes(filterByUser)) : all;
+        const meta = paginate(filtered, length, page);
+        return { success: true, storybooks: meta.items, count: meta.count, total: meta.total, page: meta.page, length: meta.length, total_pages: meta.total_pages, has_more: meta.has_more };
+      }
+
+      case "search": {
+        const { query, type = "all", limit = 10 } = args;
+        if (!query || !String(query).trim()) {
+          return { success: false, error: "Missing query: vui lòng cung cấp từ khóa tìm kiếm" };
+        }
+        const q = String(query);
+        const clampedLimit = Math.min(Math.max(Number(limit) || 10, 1), 50);
+        const validTypes = ["all", "storybook", "storyverse", "user", "character"];
+        const t = validTypes.includes(type) ? type : "all";
+
+        const results: Record<string, any[]> = {};
+        if (t === "all" || t === "storybook") results.storybooks = await db.searchStorybooks(q, clampedLimit);
+        if (t === "all" || t === "storyverse") results.storyverses = await db.searchStoryverses(q, clampedLimit);
+        if (t === "all" || t === "user") results.users = await db.searchUsers(q, clampedLimit);
+        if (t === "all" || t === "character") results.characters = await db.searchCharacters(q, clampedLimit);
+
+        const total = Object.values(results).reduce((sum, arr) => sum + arr.length, 0);
+        return { success: true, type: t, count: total, results };
+      }
+
       case "create_or_edit_chapter": {
-        const { storybook_id, chapter_number, title, content, summary = "" } = args;
+        const { storybook_id, chapter_number, title, content = "", summary = "" } = args;
         const res = await db.createOrEditChapter(storybook_id, chapter_number, title, content, summary);
         return { success: true, chapter: { ...res, content: "[Hidden Content in output]" }, url: `${BASE_URL}/storybook/${storybook_id}/chapter/${chapter_number}` };
       }
@@ -298,9 +458,19 @@ export async function executeMcpTool(name: string, args: any, user: db.User): Pr
         return { success: true, storyverse: universe };
       }
 
+      case "get_storyverses": {
+        const length = clampLength(args.length);
+        const page = clampPage(args.page);
+        const filterByUser = args.filter_by_user ? String(args.filter_by_user).toLowerCase() : "";
+        const all = await db.getAllStoryverses();
+        const filtered = filterByUser ? all.filter(v => v.author.toLowerCase().includes(filterByUser)) : all;
+        const meta = paginate(filtered, length, page);
+        return { success: true, storyverses: meta.items, count: meta.count, total: meta.total, page: meta.page, length: meta.length, total_pages: meta.total_pages, has_more: meta.has_more };
+      }
+
       case "create_storyverse": {
-        const { id, title, description } = args;
-        const res = await db.createStoryverse(id, title, description, user.ai_author_name || "AI");
+        const { id, title, description = "" } = args;
+        const res = await db.createStoryverse(id, title, description, user.username);
         return { success: true, storyverse: res, url: `${BASE_URL}/storyverses/${id}` };
       }
 
@@ -310,10 +480,45 @@ export async function executeMcpTool(name: string, args: any, user: db.User): Pr
         return { success, message: success ? "Storyverse updated" : "Failed to update Storyverse" };
       }
 
-      case "create_shared_character": {
-        const { id, name: charName, other_info, storyverse_id } = args;
-        const res = await db.createSharedCharacter(id, charName, other_info, storyverse_id, user.ai_author_name || "AI");
+      case "create_character": {
+        const { id, name: charName, description, storyverse_id } = args;
+        const res = await db.createCharacter(id, charName, description, storyverse_id, user.username);
         return { success: true, character: res, url: `${BASE_URL}/storyverses/${storyverse_id}` };
+      }
+
+      case "get_character_by": {
+        const length = clampLength(args.length);
+        const page = clampPage(args.page);
+        const filterByUser = args.filter_by_user ? String(args.filter_by_user).toLowerCase() : "";
+
+        if (args.character_id) {
+          const ch = await db.getCharacterById(args.character_id);
+          if (!ch) return { success: false, error: "Character not found" };
+          return { success: true, character: ch };
+        }
+
+        const list = args.storyverse_id
+          ? await db.getCharactersByStoryverse(args.storyverse_id)
+          : await db.getAllCharacters();
+        const filtered = filterByUser ? list.filter(c => c.author.toLowerCase().includes(filterByUser)) : list;
+        const meta = paginate(filtered, length, page);
+        return { success: true, characters: meta.items, count: meta.count, total: meta.total, page: meta.page, length: meta.length, total_pages: meta.total_pages, has_more: meta.has_more };
+      }
+
+      case "edit_character": {
+        const { id, name, description, thumbnail_url } = args;
+        if (name === undefined && description === undefined && thumbnail_url === undefined) {
+          return { success: false, error: "Provide at least one field to update: name, description, thumbnail_url" };
+        }
+        const existing = await db.getCharacterById(id);
+        if (!existing) return { success: false, error: "Character not found" };
+        const success = await db.updateCharacter(
+          id,
+          name !== undefined ? String(name) : existing.name,
+          description !== undefined ? String(description) : existing.description,
+          thumbnail_url !== undefined ? String(thumbnail_url) : undefined
+        );
+        return { success, message: success ? "Character updated" : "Failed to update character" };
       }
 
       case "delete_storybook": {
@@ -334,9 +539,9 @@ export async function executeMcpTool(name: string, args: any, user: db.User): Pr
         return { success, message: success ? "Storyverse deleted" : "Failed to delete storyverse" };
       }
 
-      case "delete_shared_character": {
+      case "delete_character": {
         const { id } = args;
-        const success = await db.deleteSharedCharacter(id);
+        const success = await db.deleteCharacter(id);
         return { success, message: success ? "Character deleted" : "Failed to delete character" };
       }
 
@@ -367,6 +572,8 @@ export async function executeMcpTool(name: string, args: any, user: db.User): Pr
             display_name: user.display_name,
             is_admin: user.is_admin,
             is_owner: user.is_owner,
+            des: user.des || "",
+            avatar: user.avatar || "",
             join_date: user.join_date,
             created_storybook: createdBooks.length,
             created_storyverse: createdVerses.length,
@@ -380,10 +587,57 @@ export async function executeMcpTool(name: string, args: any, user: db.User): Pr
         };
       }
 
+      case "get_users": {
+        const length = clampLength(args.length);
+        const page = clampPage(args.page);
+        const filterByUser = args.filter_by_user ? String(args.filter_by_user).toLowerCase() : "";
+        const all = await db.getAllUsers();
+        const filtered = filterByUser ? all.filter(u => u.username.toLowerCase().includes(filterByUser)) : all;
+        const meta = paginate(filtered, length, page);
+        const users = meta.items.map(u => ({
+          username: u.username,
+          display_name: u.display_name,
+          is_admin: u.is_admin,
+          is_owner: u.is_owner,
+          is_creator: u.is_creator,
+          ai_author_name: u.ai_author_name,
+          des: u.des || "",
+          avatar: u.avatar || "",
+          join_date: u.join_date,
+        }));
+        return { success: true, users, count: meta.count, total: meta.total, page: meta.page, length: meta.length, total_pages: meta.total_pages, has_more: meta.has_more };
+      }
+
       case "edit_user_role": {
         const { username, is_admin } = args;
         const success = await db.updateUserRole(username, is_admin);
         return { success, message: success ? "User role updated" : "Failed to update user role" };
+      }
+
+      case "create_user": {
+        const { username, password, display_name, is_admin = false, des = "", avatar = "" } = args;
+        if (!username || !password) return { success: false, error: "Missing username or password" };
+        const cleanUsername = String(username).trim().toLowerCase();
+        const pwd = String(password);
+        if (cleanUsername.length < 3 || pwd.length < 4) {
+          return { success: false, error: "Username must be >= 3 chars, password >= 4 chars" };
+        }
+        const existing = await db.getUserByUsername(cleanUsername);
+        if (existing) return { success: false, error: "Username is already taken" };
+        const pwdHash = await sha256(pwd);
+        const newUser = await db.createUser(cleanUsername, String(display_name || cleanUsername).trim(), pwdHash, !!is_admin, false, des, avatar);
+        return {
+          success: true,
+          user: {
+            username: newUser.username,
+            display_name: newUser.display_name,
+            is_admin: newUser.is_admin,
+            is_owner: newUser.is_owner,
+            join_date: newUser.join_date,
+            des: newUser.des,
+            avatar: newUser.avatar,
+          },
+        };
       }
 
       case "delete_user": {
@@ -401,7 +655,16 @@ export async function executeMcpTool(name: string, args: any, user: db.User): Pr
       case "comment_to": {
         const { content, reply_to, target_type, target_id } = args;
         const commentId = `comment_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-        const res = await db.addComment(commentId, user.username, content, reply_to || null, target_type, target_id);
+        // Keep author as the real username for FK integrity, but display the AI author name
+        const res = await db.addComment(
+          commentId,
+          user.username,
+          content,
+          reply_to || null,
+          target_type,
+          target_id,
+          user.ai_author_name || user.display_name
+        );
         return { success: true, comment: res };
       }
 

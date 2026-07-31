@@ -14,22 +14,22 @@ export function renderCreatorPanel(books: db.Storybook[], universes: db.Storyver
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <!-- Navigation Sidebar tabs -->
             <div class="space-y-3 lg:col-span-1">
-                <button onclick="switchCreatorTab('newBook')" id="btn-newBook" class="creator-tab-btn w-full p-4 bg-white dark:bg-[#161925] border border-amber-500 text-amber-400 font-bold text-sm rounded-xl text-left flex items-center justify-between transition-all">
+                <a href="/create/storybook" class="w-full p-4 bg-white dark:bg-[#161925] border border-amber-500 text-amber-400 font-bold text-sm rounded-xl text-left flex items-center justify-between transition-all hover:brightness-110">
                     <span><i class="fa-solid fa-book mr-2"></i> Tạo bộ truyện mới</span>
-                    <i class="fa-solid fa-chevron-right text-xs"></i>
-                </button>
-                <button onclick="switchCreatorTab('newChapter')" id="btn-newChapter" class="creator-tab-btn w-full p-4 bg-white dark:bg-[#161925]/40 border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 text-gray-700 dark:text-gray-300 font-semibold text-sm rounded-xl text-left flex items-center justify-between transition-all">
+                    <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                </a>
+                <button onclick="switchCreatorTab('newChapter')" id="btn-newChapter" class="creator-tab-btn w-full p-4 bg-white dark:bg-[#161925] border border-amber-500 text-amber-400 font-bold text-sm rounded-xl text-left flex items-center justify-between transition-all">
                     <span><i class="fa-solid fa-file-pen mr-2"></i> Thêm/Sửa chương truyện</span>
                     <i class="fa-solid fa-chevron-right text-xs"></i>
                 </button>
-                <button onclick="switchCreatorTab('newUniverse')" id="btn-newUniverse" class="creator-tab-btn w-full p-4 bg-white dark:bg-[#161925]/40 border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 text-gray-700 dark:text-gray-300 font-semibold text-sm rounded-xl text-left flex items-center justify-between transition-all">
+                <a href="/create/storyverse" class="w-full p-4 bg-white dark:bg-[#161925]/40 border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 text-gray-700 dark:text-gray-300 font-semibold text-sm rounded-xl text-left flex items-center justify-between transition-all">
                     <span><i class="fa-solid fa-earth-asia mr-2"></i> Tạo vũ trụ cốt truyện</span>
-                    <i class="fa-solid fa-chevron-right text-xs"></i>
-                </button>
-                <button onclick="switchCreatorTab('newCharacter')" id="btn-newCharacter" class="creator-tab-btn w-full p-4 bg-white dark:bg-[#161925]/40 border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 text-gray-700 dark:text-gray-300 font-semibold text-sm rounded-xl text-left flex items-center justify-between transition-all">
+                    <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                </a>
+                <a href="/create/character" class="w-full p-4 bg-white dark:bg-[#161925]/40 border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 text-gray-700 dark:text-gray-300 font-semibold text-sm rounded-xl text-left flex items-center justify-between transition-all">
                     <span><i class="fa-solid fa-user-plus mr-2"></i> Tạo nhân vật dùng chung</span>
-                    <i class="fa-solid fa-chevron-right text-xs"></i>
-                </button>
+                    <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                </a>
                 <button onclick="switchCreatorTab('aiPromptExporter')" id="btn-aiPromptExporter" class="creator-tab-btn w-full p-4 bg-gradient-to-r from-amber-500/10 to-yellow-500/5 border border-amber-500/20 text-yellow-400 font-bold text-sm rounded-xl text-left flex items-center justify-between hover:border-amber-500/40 transition-all shadow-md">
                     <span><i class="fa-solid fa-robot mr-2"></i> AI Context Compiler 🌟</span>
                     <i class="fa-solid fa-chevron-right text-xs"></i>
@@ -39,51 +39,8 @@ export function renderCreatorPanel(books: db.Storybook[], universes: db.Storyver
             <!-- Panel Forms -->
             <div class="lg:col-span-2 bg-white dark:bg-[#161925]/30 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 sm:p-8 relative min-h-[450px]">
 
-                <!-- Tab: Create Storybook -->
-                <div id="tabContent-newBook" class="creator-tab-content space-y-6">
-                    <div class="border-b border-gray-200 dark:border-gray-800 pb-3">
-                        <h3 class="text-xl font-bold text-gray-900 dark:text-white">Tạo Bộ Truyện Mới</h3>
-                        <p class="text-xs text-gray-600 dark:text-gray-400">Khai sinh bộ truyện mới của riêng bạn hoặc thuộc về một Vũ trụ dùng chung.</p>
-                    </div>
-                    <form onsubmit="handleCreateBook(event)" class="space-y-4">
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5">ID bộ truyện (Không dấu/khoảng cách)</label>
-                                <input type="text" id="bookId" required class="w-full bg-gray-50 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors" placeholder="tay-du-ky-ngoai-truyen">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5">Tiêu đề bộ truyện</label>
-                                <input type="text" id="bookTitle" required class="w-full bg-gray-50 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors" placeholder="Tây Du Ký: Ngoại Truyện">
-                            </div>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5">Mô tả cốt truyện</label>
-                            <textarea id="bookDescription" required rows="3" class="w-full bg-gray-50 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 rounded-xl p-3 text-gray-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors" placeholder="Tóm lược nội dung cốt truyện chính, định hướng..."></textarea>
-                        </div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5">Thể loại (Ngăn cách bởi dấu phẩy)</label>
-                                <input type="text" id="bookCategories" required class="w-full bg-gray-50 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors" placeholder="Huyền Huyễn, Tiên Hiệp, Phiêu Lưu">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5">Liên kết Vũ trụ (Storyverse)</label>
-                                <select id="bookStoryverseId" class="w-full bg-gray-50 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-2.5 text-gray-700 dark:text-gray-300 focus:outline-none focus:border-amber-500 transition-colors">
-                                    <option value="">-- Độc lập --</option>
-                                    ${universes.map(u => html`<option value="${u.id}">${u.title}</option>`)}
-                                </select>
-                            </div>
-                        </div>
-                        <div class="flex items-center space-x-3 pt-2">
-                            <input type="checkbox" id="bookAllowEdit" class="w-4 h-4 rounded border-gray-200 dark:border-gray-800 text-amber-500 focus:ring-amber-500 focus:ring-opacity-20 bg-gray-50 dark:bg-[#0f111a]">
-                            <label for="bookAllowEdit" class="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">Cho phép những người dùng khác cùng viết truyện này (Đồng sáng tác)</label>
-                        </div>
-                        <div id="newBookError" class="text-red-400 text-xs hidden"></div>
-                        <button type="submit" class="w-full py-3 bg-gradient-to-r from-amber-500 to-yellow-400 text-black font-bold rounded-xl hover:brightness-110 transition-all shadow-lg shadow-yellow-500/10">Tạo truyện mới</button>
-                    </form>
-                </div>
-
                 <!-- Tab: Add/Edit Chapter -->
-                <div id="tabContent-newChapter" class="creator-tab-content space-y-6 hidden">
+                <div id="tabContent-newChapter" class="creator-tab-content space-y-6">
                     <div class="border-b border-gray-200 dark:border-gray-800 pb-3">
                         <h3 class="text-xl font-bold text-gray-900 dark:text-white">Thêm hoặc Cập nhật Chương truyện</h3>
                         <p class="text-xs text-gray-600 dark:text-gray-400">Viết chương mới hoặc hiệu chỉnh chương cũ. Nếu đã tồn tại chương số tương tự, hệ thống sẽ tự động cập nhật.</p>
@@ -118,62 +75,6 @@ export function renderCreatorPanel(books: db.Storybook[], universes: db.Storyver
                         </div>
                         <div id="newChapterError" class="text-red-400 text-xs hidden"></div>
                         <button type="submit" class="w-full py-3 bg-gradient-to-r from-amber-500 to-yellow-400 text-black font-bold rounded-xl hover:brightness-110 transition-all shadow-lg shadow-yellow-500/10">Lưu chương truyện</button>
-                    </form>
-                </div>
-
-                <!-- Tab: Create Storyverse -->
-                <div id="tabContent-newUniverse" class="creator-tab-content space-y-6 hidden">
-                    <div class="border-b border-gray-200 dark:border-gray-800 pb-3">
-                        <h3 class="text-xl font-bold text-gray-900 dark:text-white">Tạo Vũ Trụ Cốt Truyện</h3>
-                        <p class="text-xs text-gray-600 dark:text-gray-400">Vũ trụ đóng vai trò làm không gian chung kết nối nhiều tác phẩm độc lập hoặc chia sẻ các nhân vật.</p>
-                    </div>
-                    <form onsubmit="handleCreateUniverse(event)" class="space-y-4">
-                        <div>
-                            <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5">ID vũ trụ (không dấu, viết liền)</label>
-                            <input type="text" id="universeId" required class="w-full bg-gray-50 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors" placeholder="tay-du-saga">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5">Tên vũ trụ</label>
-                            <input type="text" id="universeTitle" required class="w-full bg-gray-50 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors" placeholder="Tây Du Saga">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5">Mô tả bối cảnh và quy luật thế giới</label>
-                            <textarea id="universeDescription" required rows="4" class="w-full bg-gray-50 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 rounded-xl p-3 text-gray-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors" placeholder="Mô tả ranh giới thế giới, pháp lực, chủng tộc, quy luật siêu nhiên giúp định hình cốt truyện..."></textarea>
-                        </div>
-                        <div id="newUniverseError" class="text-red-400 text-xs hidden"></div>
-                        <button type="submit" class="w-full py-3 bg-gradient-to-r from-amber-500 to-yellow-400 text-black font-bold rounded-xl hover:brightness-110 transition-all shadow-lg shadow-yellow-500/10">Tạo vũ trụ cốt truyện</button>
-                    </form>
-                </div>
-
-                <!-- Tab: Create Character -->
-                <div id="tabContent-newCharacter" class="creator-tab-content space-y-6 hidden">
-                    <div class="border-b border-gray-200 dark:border-gray-800 pb-3">
-                        <h3 class="text-xl font-bold text-gray-900 dark:text-white">Tạo Nhân Vật Dùng Chung</h3>
-                        <p class="text-xs text-gray-600 dark:text-gray-400">Các nhân vật được tạo trong Vũ trụ có thể được sử dụng bởi bất kỳ tác phẩm nào cùng thuộc vũ trụ đó.</p>
-                    </div>
-                    <form onsubmit="handleCreateCharacter(event)" class="space-y-4">
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5">Chọn Vũ trụ (Storyverse)</label>
-                                <select id="charStoryverseId" required class="w-full bg-gray-50 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-2.5 text-gray-700 dark:text-gray-300 focus:outline-none focus:border-amber-500 transition-colors">
-                                    ${universes.map(u => html`<option value="${u.id}">${u.title}</option>`)}
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5">ID nhân vật (không dấu)</label>
-                                <input type="text" id="charId" required class="w-full bg-gray-50 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors" placeholder="ton-ngo-khong">
-                            </div>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5">Tên nhân vật</label>
-                            <input type="text" id="charName" required class="w-full bg-gray-50 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors" placeholder="Tôn Ngộ Không">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5">Mô tả ngoại hình, tính cách, kỹ năng, pháp bảo (Định dạng tự do)</label>
-                            <textarea id="charInfo" required rows="4" class="w-full bg-gray-50 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 rounded-xl p-3 text-gray-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors" placeholder="Mô tả kỹ năng, ngoại hình, điểm yếu, bối cảnh nhân vật để AI đọc hiểu..."></textarea>
-                        </div>
-                        <div id="newCharError" class="text-red-400 text-xs hidden"></div>
-                        <button type="submit" class="w-full py-3 bg-gradient-to-r from-amber-500 to-yellow-400 text-black font-bold rounded-xl hover:brightness-110 transition-all shadow-lg shadow-yellow-500/10">Tạo nhân vật dùng chung</button>
                     </form>
                 </div>
 
@@ -250,36 +151,6 @@ export function renderCreatorPanel(books: db.Storybook[], universes: db.Storyver
         }
 
         // Submissions
-        async function handleCreateBook(e) {
-            e.preventDefault();
-            const id = document.getElementById('bookId').value.trim();
-            const title = document.getElementById('bookTitle').value.trim();
-            const description = document.getElementById('bookDescription').value.trim();
-            const categories = document.getElementById('bookCategories').value.trim();
-            const storyverse_id = document.getElementById('bookStoryverseId').value;
-            const allow_other_author_edit = document.getElementById('bookAllowEdit').checked;
-            const errDiv = document.getElementById('newBookError');
-
-            errDiv.classList.add('hidden');
-
-            try {
-                const res = await fetch('/api/storybooks', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id, title, description, categories, storyverse_id, allow_other_author_edit })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    window.location.href = '/storybook/' + data.storybook.id;
-                } else {
-                    errDiv.innerText = data.error || 'Thất bại.';
-                    errDiv.classList.remove('hidden');
-                }
-            } catch (err) {
-                console.error(err);
-            }
-        }
-
         async function handleCreateChapter(e) {
             e.preventDefault();
             const bookId = document.getElementById('chapterBookId').value;
@@ -300,61 +171,6 @@ export function renderCreatorPanel(books: db.Storybook[], universes: db.Storyver
                 const data = await res.json();
                 if (data.success) {
                     window.location.href = \`/storybook/\${bookId}/chapter/\${chapter_number}\`;
-                } else {
-                    errDiv.innerText = data.error || 'Thất bại.';
-                    errDiv.classList.remove('hidden');
-                }
-            } catch (err) {
-                console.error(err);
-            }
-        }
-
-        async function handleCreateUniverse(e) {
-            e.preventDefault();
-            const id = document.getElementById('universeId').value.trim();
-            const title = document.getElementById('universeTitle').value.trim();
-            const description = document.getElementById('universeDescription').value.trim();
-            const errDiv = document.getElementById('newUniverseError');
-
-            errDiv.classList.add('hidden');
-
-            try {
-                const res = await fetch('/api/storyverses', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id, title, description })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    window.location.href = '/storyverses/' + data.storyverse.id;
-                } else {
-                    errDiv.innerText = data.error || 'Thất bại.';
-                    errDiv.classList.remove('hidden');
-                }
-            } catch (err) {
-                console.error(err);
-            }
-        }
-
-        async function handleCreateCharacter(e) {
-            e.preventDefault();
-            const id = document.getElementById('charId').value.trim();
-            const name = document.getElementById('charName').value.trim();
-            const other_info = document.getElementById('charInfo').value.trim();
-            const storyverse_id = document.getElementById('charStoryverseId').value;
-            const errDiv = document.getElementById('newCharError');
-
-            errDiv.classList.add('hidden');
-
-            try {
-                const res = await fetch('/api/characters', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id, name, other_info, storyverse_id })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    window.location.href = '/storyverses/' + storyverse_id;
                 } else {
                     errDiv.innerText = data.error || 'Thất bại.';
                     errDiv.classList.remove('hidden');

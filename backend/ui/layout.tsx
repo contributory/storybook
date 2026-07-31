@@ -46,6 +46,29 @@ export function layout(title: string, content: any, user: db.User | null, curren
             -ms-overflow-style: none;
             scrollbar-width: none;
         }
+        /* Markdown rendered content */
+        .md h1, .md h2, .md h3, .md h4, .md h5, .md h6 { font-weight: 800; line-height: 1.3; margin: 1.2em 0 0.5em; color: inherit; }
+        .md h1 { font-size: 1.6em; }
+        .md h2 { font-size: 1.35em; }
+        .md h3 { font-size: 1.15em; }
+        .md h4, .md h5, .md h6 { font-size: 1em; }
+        .md p { margin: 0.6em 0; }
+        .md ul, .md ol { margin: 0.6em 0; padding-left: 1.5em; }
+        .md ul { list-style: disc; }
+        .md ol { list-style: decimal; }
+        .md li { margin: 0.25em 0; }
+        .md a { color: #f59e0b; text-decoration: underline; text-underline-offset: 2px; }
+        .md blockquote { border-left: 3px solid #f59e0b; padding-left: 1em; margin: 0.8em 0; font-style: italic; color: #6b7280; }
+        .md code { background: rgba(245,158,11,.12); color: #d97706; padding: .15em .35em; border-radius: .375rem; font-size: .875em; }
+        .md pre { background: #0f111a; color: #e5e7eb; padding: 1em; border-radius: .75rem; overflow-x: auto; margin: 1em 0; border: 1px solid rgba(255,255,255,.08); }
+        .md pre code { background: transparent; color: inherit; padding: 0; font-size: .875em; }
+        .md table { width: 100%; border-collapse: collapse; margin: 1em 0; font-size: .875em; }
+        .md th, .md td { border: 1px solid rgba(107,114,128,.3); padding: .5em .75em; text-align: left; }
+        .md th { background: rgba(245,158,11,.08); font-weight: 700; }
+        .md img { max-width: 100%; border-radius: .75rem; margin: 1em 0; }
+        .md hr { border: 0; border-top: 1px solid rgba(107,114,128,.3); margin: 1.5em 0; }
+        .md > :first-child { margin-top: 0; }
+        .md > :last-child { margin-bottom: 0; }
     </style>
     <script>
         function getTheme() {
@@ -142,6 +165,9 @@ export function layout(title: string, content: any, user: db.User | null, curren
                     <a href="/storyverses" class="transition-colors hover:text-amber-400 ${currentPath.startsWith("/storyverses") ? "text-amber-400" : "text-gray-700 dark:text-gray-300"}">
                         <i class="fa-solid fa-earth-asia mr-1.5"></i> Vũ trụ truyện
                     </a>
+                    <a href="/characters" class="transition-colors hover:text-amber-400 ${currentPath.startsWith("/characters") ? "text-amber-400" : "text-gray-700 dark:text-gray-300"}">
+                        <i class="fa-solid fa-users mr-1.5"></i> Nhân vật
+                    </a>
                     ${user && user.is_creator ? html`
                     <a href="/creator" class="transition-colors hover:text-amber-400 ${currentPath.startsWith("/creator") ? "text-amber-400" : "text-gray-700 dark:text-gray-300"}">
                         <i class="fa-solid fa-feather-pointed mr-1.5"></i> Nhà sáng tạo
@@ -212,6 +238,9 @@ export function layout(title: string, content: any, user: db.User | null, curren
         </a>
         <a href="/storyverses" class="block px-3 py-2 rounded-md text-base font-medium ${currentPath.startsWith("/storyverses") ? "bg-gray-100 dark:bg-gray-800 text-amber-500" : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50"}">
             <i class="fa-solid fa-earth-asia w-6 text-center"></i> Vũ trụ truyện
+        </a>
+        <a href="/characters" class="block px-3 py-2 rounded-md text-base font-medium ${currentPath.startsWith("/characters") ? "bg-gray-100 dark:bg-gray-800 text-amber-500" : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50"}">
+            <i class="fa-solid fa-users w-6 text-center"></i> Nhân vật
         </a>
         ${user && user.is_creator ? html`
         <a href="/creator" class="block px-3 py-2 rounded-md text-base font-medium ${currentPath.startsWith("/creator") ? "bg-gray-100 dark:bg-gray-800 text-amber-500" : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50"}">

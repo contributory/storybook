@@ -59,6 +59,8 @@ export interface User {
   is_creator: boolean;
   ai_author_name: string;
   api_token: string;
+  des: string;
+  avatar: string;
   created_storybook?: number; // query computed
   created_storyverse?: number; // query computed
   following?: string[]; // list of usernames followed
@@ -92,12 +94,13 @@ export interface Storybook {
   likes_count?: number;
   thumbnail_url?: string;
   characters?: string;
+  ost?: string;
 }
 
-export interface SharedCharacter {
+export interface Character {
   id: string;
   name: string;
-  other_info: string; // JSON or text
+  description: string; // JSON or text
   storyverse_id: string;
   author: string; // username
   created_at: string;
@@ -152,6 +155,25 @@ export interface ReadingProgress {
   storybook_title?: string;
 }
 
+export interface PageResult<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+function clampPage(page: any, fallback = 1): number {
+  const n = Math.floor(Number(page));
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
+function clampPageSize(size: any, fallback = 12, max = 50): number {
+  const n = Math.floor(Number(size));
+  if (!(Number.isFinite(n) && n > 0)) return fallback;
+  return Math.min(n, max);
+}
+
 // Database Migrations (Run on startup)
 export async function initDb() {
   console.log("Initializing database schema...");
@@ -196,7 +218,7 @@ export async function initDb() {
     CREATE TABLE IF NOT EXISTS shared_characters (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
-      other_info TEXT NOT NULL,
+      description TEXT NOT NULL,
       storyverse_id TEXT NOT NULL,
       author TEXT NOT NULL,
       created_at TEXT NOT NULL,
@@ -286,11 +308,16 @@ export async function initDb() {
   const migrations = [
     "ALTER TABLE users ADD COLUMN is_creator INTEGER NOT NULL DEFAULT 0",
     "ALTER TABLE users ADD COLUMN ai_author_name TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE comments ADD COLUMN author_display_name TEXT NOT NULL DEFAULT ''",
     "ALTER TABLE users ADD COLUMN api_token TEXT NOT NULL DEFAULT ''",
     "ALTER TABLE storybooks ADD COLUMN thumbnail_url TEXT NOT NULL DEFAULT ''",
     "ALTER TABLE storyverses ADD COLUMN thumbnail_url TEXT NOT NULL DEFAULT ''",
     "ALTER TABLE shared_characters ADD COLUMN thumbnail_url TEXT NOT NULL DEFAULT ''",
-    "ALTER TABLE storybooks ADD COLUMN characters TEXT NOT NULL DEFAULT '[]'"
+    "ALTER TABLE shared_characters RENAME COLUMN other_info TO description",
+    "ALTER TABLE storybooks ADD COLUMN characters TEXT NOT NULL DEFAULT '[]'",
+    "ALTER TABLE users ADD COLUMN des TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE users ADD COLUMN avatar TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE storybooks ADD COLUMN ost TEXT NOT NULL DEFAULT '[]'"
   ];
 
   for (const sql of migrations) {
@@ -365,13 +392,13 @@ export async function executeQuery(sql: string, args: any[] = []) {
 }
 
 // User Helpers
-export async function createUser(username: string, display_name: string, password_hash: string, is_admin = false, is_owner = false): Promise<User> {
+export async function createUser(username: string, display_name: string, password_hash: string, is_admin = false, is_owner = false, des = "", avatar = ""): Promise<User> {
   const join_date = new Date().toISOString();
   await dbClient.execute({
-    sql: `INSERT INTO users (username, display_name, password_hash, is_admin, is_owner, join_date) VALUES (?, ?, ?, ?, ?, ?)`,
-    args: [username.toLowerCase(), display_name, password_hash, is_admin ? 1 : 0, is_owner ? 1 : 0, join_date],
+    sql: `INSERT INTO users (username, display_name, password_hash, is_admin, is_owner, join_date, des, avatar) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [username.toLowerCase(), display_name, password_hash, is_admin ? 1 : 0, is_owner ? 1 : 0, join_date, des, avatar],
   });
-  return { username: username.toLowerCase(), display_name, password_hash, is_admin, is_owner, join_date, is_creator: false, ai_author_name: "", api_token: "" };
+  return { username: username.toLowerCase(), display_name, password_hash, is_admin, is_owner, join_date, is_creator: false, ai_author_name: "", api_token: "", des, avatar };
 }
 
 export async function getUserByUsername(username: string): Promise<User | null> {
@@ -391,6 +418,8 @@ export async function getUserByUsername(username: string): Promise<User | null> 
     is_creator: row.is_creator === 1,
     ai_author_name: (row.ai_author_name as string) || "",
     api_token: (row.api_token as string) || "",
+    des: (row.des as string) || "",
+    avatar: (row.avatar as string) || "",
   };
 }
 
@@ -411,14 +440,67 @@ export async function getAllUsers(): Promise<User[]> {
     is_creator: row.is_creator === 1,
     ai_author_name: (row.ai_author_name as string) || "",
     api_token: (row.api_token as string) || "",
+    des: (row.des as string) || "",
+    avatar: (row.avatar as string) || "",
+  }));
+}
+
+export async function getUsersPaginated(page = 1, pageSize = 20): Promise<PageResult<User>> {
+  const pageNum = clampPage(page);
+  const size = clampPageSize(pageSize, 20, 100);
+  const offset = (pageNum - 1) * size;
+  const countRes = await dbClient.execute(`SELECT COUNT(*) as count FROM users`);
+  const total = Number(countRes.rows[0].count);
+  const res = await dbClient.execute({
+    sql: `SELECT * FROM users ORDER BY join_date DESC LIMIT ? OFFSET ?`,
+    args: [size, offset],
+  });
+  const items = res.rows.map(row => ({
+    username: row.username as string,
+    display_name: row.display_name as string,
+    password_hash: row.password_hash as string,
+    is_admin: row.is_admin === 1,
+    is_owner: row.is_owner === 1,
+    join_date: row.join_date as string,
+    is_creator: row.is_creator === 1,
+    ai_author_name: (row.ai_author_name as string) || "",
+    api_token: (row.api_token as string) || "",
+    des: (row.des as string) || "",
+    avatar: (row.avatar as string) || "",
+  }));
+  return { items, total, page: pageNum, pageSize: size, totalPages: Math.max(1, Math.ceil(total / size)) };
+}
+
+export async function searchUsers(query: string, limit = 10): Promise<any[]> {
+  const pattern = `%${query.toLowerCase().trim()}%`;
+  const res = await dbClient.execute({
+    sql: `SELECT * FROM users WHERE LOWER(username) LIKE ? OR LOWER(display_name) LIKE ? ORDER BY join_date DESC LIMIT ?`,
+    args: [pattern, pattern, limit],
+  });
+  // Sanitized output: no password_hash / api_token
+  return res.rows.map(row => ({
+    username: row.username as string,
+    display_name: row.display_name as string,
+    is_admin: row.is_admin === 1,
+    is_owner: row.is_owner === 1,
+    is_creator: row.is_creator === 1,
+    ai_author_name: (row.ai_author_name as string) || "",
+    des: (row.des as string) || "",
+    avatar: (row.avatar as string) || "",
+    join_date: row.join_date as string,
   }));
 }
 
 
-export async function updateUserSettings(username: string, display_name: string, is_creator: boolean, ai_author_name: string): Promise<boolean> {
+export async function updateUserSettings(username: string, display_name: string, is_creator: boolean, ai_author_name: string, des?: string, avatar?: string): Promise<boolean> {
+  const sets: string[] = ["display_name = ?", "is_creator = ?", "ai_author_name = ?"];
+  const args: any[] = [display_name, is_creator ? 1 : 0, ai_author_name];
+  if (des !== undefined) { sets.push("des = ?"); args.push(des); }
+  if (avatar !== undefined) { sets.push("avatar = ?"); args.push(avatar); }
+  args.push(username.toLowerCase());
   const res = await dbClient.execute({
-    sql: `UPDATE users SET display_name = ?, is_creator = ?, ai_author_name = ? WHERE username = ?`,
-    args: [display_name, is_creator ? 1 : 0, ai_author_name, username.toLowerCase()]
+    sql: `UPDATE users SET ${sets.join(", ")} WHERE username = ?`,
+    args,
   });
   return res.rowsAffected > 0;
 }
@@ -449,6 +531,8 @@ export async function getUserByApiToken(api_token: string): Promise<User | null>
     is_creator: row.is_creator === 1,
     ai_author_name: (row.ai_author_name as string) || "",
     api_token: (row.api_token as string) || "",
+    des: (row.des as string) || "",
+    avatar: (row.avatar as string) || "",
   };
 }
 
@@ -573,10 +657,9 @@ export async function getStoryverseById(id: string): Promise<Storyverse | null> 
   };
 }
 
-export async function getAllStoryverses(): Promise<Storyverse[]> {
-  const res = await dbClient.execute(`SELECT * FROM storyverses ORDER BY created_at DESC`);
+async function storyversesFromRows(rows: any[]): Promise<Storyverse[]> {
   const list: Storyverse[] = [];
-  for (const row of res.rows) {
+  for (const row of rows) {
     const commentsCount = await getCommentsCount("storyverse", row.id as string);
     const likesCount = await getLikesCount("storyverse", row.id as string);
     list.push({
@@ -585,6 +668,76 @@ export async function getAllStoryverses(): Promise<Storyverse[]> {
       description: row.description as string,
       author: row.author as string,
       created_at: row.created_at as string,
+      comments_count: commentsCount,
+      likes_count: likesCount,
+      thumbnail_url: (row.thumbnail_url as string) || "",
+    });
+  }
+  return list;
+}
+
+export async function getAllStoryverses(): Promise<Storyverse[]> {
+  const res = await dbClient.execute(`SELECT * FROM storyverses ORDER BY created_at DESC`);
+  return await storyversesFromRows(res.rows);
+}
+
+export async function getStoryversesPaginated(page = 1, pageSize = 12): Promise<PageResult<Storyverse>> {
+  const pageNum = clampPage(page);
+  const size = clampPageSize(pageSize);
+  const offset = (pageNum - 1) * size;
+  const countRes = await dbClient.execute(`SELECT COUNT(*) as count FROM storyverses`);
+  const total = Number(countRes.rows[0].count);
+  const res = await dbClient.execute({
+    sql: `SELECT * FROM storyverses ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+    args: [size, offset],
+  });
+  const items = await storyversesFromRows(res.rows);
+  return { items, total, page: pageNum, pageSize: size, totalPages: Math.max(1, Math.ceil(total / size)) };
+}
+
+export async function getStoryversesByAuthorPaginated(username: string, page = 1, pageSize = 10): Promise<PageResult<Storyverse>> {
+  const pageNum = clampPage(page);
+  const size = clampPageSize(pageSize, 10);
+  const offset = (pageNum - 1) * size;
+  const countRes = await dbClient.execute({
+    sql: `SELECT COUNT(*) as count FROM storyverses WHERE author = ?`,
+    args: [username.toLowerCase()],
+  });
+  const total = Number(countRes.rows[0].count);
+  const res = await dbClient.execute({
+    sql: `SELECT * FROM storyverses WHERE author = ? ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+    args: [username.toLowerCase(), size, offset],
+  });
+  const items = await storyversesFromRows(res.rows);
+  return { items, total, page: pageNum, pageSize: size, totalPages: Math.max(1, Math.ceil(total / size)) };
+}
+
+export async function searchStoryverses(query: string, limit = 10): Promise<any[]> {
+  const pattern = `%${query.toLowerCase().trim()}%`;
+  const res = await dbClient.execute({
+    sql: `
+      SELECT * FROM storyverses
+      WHERE LOWER(title) LIKE ? OR LOWER(description) LIKE ? OR LOWER(author) LIKE ?
+      ORDER BY created_at DESC
+      LIMIT ?
+    `,
+    args: [pattern, pattern, pattern, limit],
+  });
+  const list: any[] = [];
+  for (const row of res.rows) {
+    const booksRes = await dbClient.execute({
+      sql: `SELECT COUNT(*) as count FROM storybooks WHERE storyverse_id = ?`,
+      args: [row.id as string],
+    });
+    const commentsCount = await getCommentsCount("storyverse", row.id as string);
+    const likesCount = await getLikesCount("storyverse", row.id as string);
+    list.push({
+      id: row.id as string,
+      title: row.title as string,
+      description: row.description as string,
+      author: row.author as string,
+      created_at: row.created_at as string,
+      storybooks_count: Number(booksRes.rows[0].count),
       comments_count: commentsCount,
       likes_count: likesCount,
       thumbnail_url: (row.thumbnail_url as string) || "",
@@ -611,12 +764,13 @@ export async function createStorybook(
   allow_other_author_edit: boolean,
   storyverse_id: string | null,
   thumbnail_url = "",
-  characters = "[]"
+  characters = "[]",
+  ost = "[]"
 ): Promise<Storybook> {
   const created_at = new Date().toISOString();
   await dbClient.execute({
-    sql: `INSERT INTO storybooks (id, title, description, authors, categories, created_at, allow_other_author_edit, storyverse_id, thumbnail_url, characters) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    args: [id, title, description, authors, categories, created_at, allow_other_author_edit ? 1 : 0, storyverse_id, thumbnail_url, characters],
+    sql: `INSERT INTO storybooks (id, title, description, authors, categories, created_at, allow_other_author_edit, storyverse_id, thumbnail_url, characters, ost) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [id, title, description, authors, categories, created_at, allow_other_author_edit ? 1 : 0, storyverse_id, thumbnail_url, characters, ost],
   });
   return {
     id,
@@ -629,6 +783,7 @@ export async function createStorybook(
     storyverse_id,
     thumbnail_url,
     characters,
+    ost,
   };
 }
 
@@ -640,30 +795,25 @@ export async function updateStorybook(
   allow_other_author_edit: boolean,
   storyverse_id: string | null,
   thumbnail_url?: string,
-  characters?: string
+  characters?: string,
+  ost?: string
 ): Promise<boolean> {
-  let res;
-  if (thumbnail_url !== undefined && characters !== undefined) {
-    res = await dbClient.execute({
-      sql: `UPDATE storybooks SET title = ?, description = ?, categories = ?, allow_other_author_edit = ?, storyverse_id = ?, thumbnail_url = ?, characters = ? WHERE id = ?`,
-      args: [title, description, categories, allow_other_author_edit ? 1 : 0, storyverse_id, thumbnail_url, characters, id],
-    });
-  } else if (thumbnail_url !== undefined) {
-    res = await dbClient.execute({
-      sql: `UPDATE storybooks SET title = ?, description = ?, categories = ?, allow_other_author_edit = ?, storyverse_id = ?, thumbnail_url = ? WHERE id = ?`,
-      args: [title, description, categories, allow_other_author_edit ? 1 : 0, storyverse_id, thumbnail_url, id],
-    });
-  } else if (characters !== undefined) {
-    res = await dbClient.execute({
-      sql: `UPDATE storybooks SET title = ?, description = ?, categories = ?, allow_other_author_edit = ?, storyverse_id = ?, characters = ? WHERE id = ?`,
-      args: [title, description, categories, allow_other_author_edit ? 1 : 0, storyverse_id, characters, id],
-    });
-  } else {
-    res = await dbClient.execute({
-      sql: `UPDATE storybooks SET title = ?, description = ?, categories = ?, allow_other_author_edit = ?, storyverse_id = ? WHERE id = ?`,
-      args: [title, description, categories, allow_other_author_edit ? 1 : 0, storyverse_id, id],
-    });
-  }
+  const sets: string[] = [
+    "title = ?",
+    "description = ?",
+    "categories = ?",
+    "allow_other_author_edit = ?",
+    "storyverse_id = ?"
+  ];
+  const args: any[] = [title, description, categories, allow_other_author_edit ? 1 : 0, storyverse_id];
+  if (thumbnail_url !== undefined) { sets.push("thumbnail_url = ?"); args.push(thumbnail_url); }
+  if (characters !== undefined) { sets.push("characters = ?"); args.push(characters); }
+  if (ost !== undefined) { sets.push("ost = ?"); args.push(ost); }
+  args.push(id);
+  const res = await dbClient.execute({
+    sql: `UPDATE storybooks SET ${sets.join(", ")} WHERE id = ?`,
+    args,
+  });
   return res.rowsAffected > 0;
 }
 
@@ -697,11 +847,88 @@ export async function getStorybookById(id: string): Promise<Storybook | null> {
     likes_count: likesCount,
     thumbnail_url: (row.thumbnail_url as string) || "",
     characters: (row.characters as string) || "[]",
+    ost: (row.ost as string) || "[]",
   };
+}
+
+async function storybooksFromRows(rows: any[]): Promise<Storybook[]> {
+  const list: Storybook[] = [];
+  for (const row of rows) {
+    const chRes = await dbClient.execute({
+      sql: `SELECT COUNT(*) as count FROM chapters WHERE storybook_id = ?`,
+      args: [row.id as string],
+    });
+    const chaptersCount = Number(chRes.rows[0].count);
+    const commentsCount = await getCommentsCount("storybook", row.id as string);
+    const likesCount = await getLikesCount("storybook", row.id as string);
+    list.push({
+      id: row.id as string,
+      title: row.title as string,
+      description: row.description as string,
+      authors: row.authors as string,
+      categories: row.categories as string,
+      created_at: row.created_at as string,
+      allow_other_author_edit: row.allow_other_author_edit === 1,
+      storyverse_id: row.storyverse_id as string | null,
+      chapters_count: chaptersCount,
+      comments_count: commentsCount,
+      likes_count: likesCount,
+      thumbnail_url: (row.thumbnail_url as string) || "",
+      characters: (row.characters as string) || "[]",
+      ost: (row.ost as string) || "[]",
+    });
+  }
+  return list;
 }
 
 export async function getAllStorybooks(): Promise<Storybook[]> {
   const res = await dbClient.execute(`SELECT * FROM storybooks ORDER BY created_at DESC`);
+  return await storybooksFromRows(res.rows);
+}
+
+export async function getStorybooksPaginated(page = 1, pageSize = 12): Promise<PageResult<Storybook>> {
+  const pageNum = clampPage(page);
+  const size = clampPageSize(pageSize);
+  const offset = (pageNum - 1) * size;
+  const countRes = await dbClient.execute(`SELECT COUNT(*) as count FROM storybooks`);
+  const total = Number(countRes.rows[0].count);
+  const res = await dbClient.execute({
+    sql: `SELECT * FROM storybooks ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+    args: [size, offset],
+  });
+  const items = await storybooksFromRows(res.rows);
+  return { items, total, page: pageNum, pageSize: size, totalPages: Math.max(1, Math.ceil(total / size)) };
+}
+
+export async function getStorybooksByAuthorPaginated(username: string, page = 1, pageSize = 10): Promise<PageResult<Storybook>> {
+  const pageNum = clampPage(page);
+  const size = clampPageSize(pageSize, 10);
+  const offset = (pageNum - 1) * size;
+  const pattern = `%${username.toLowerCase()}%`;
+  const countRes = await dbClient.execute({
+    sql: `SELECT COUNT(*) as count FROM storybooks WHERE LOWER(authors) LIKE ?`,
+    args: [pattern],
+  });
+  const total = Number(countRes.rows[0].count);
+  const res = await dbClient.execute({
+    sql: `SELECT * FROM storybooks WHERE LOWER(authors) LIKE ? ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+    args: [pattern, size, offset],
+  });
+  const items = await storybooksFromRows(res.rows);
+  return { items, total, page: pageNum, pageSize: size, totalPages: Math.max(1, Math.ceil(total / size)) };
+}
+
+export async function searchStorybooks(query: string, limit = 10): Promise<Storybook[]> {
+  const pattern = `%${query.toLowerCase().trim()}%`;
+  const res = await dbClient.execute({
+    sql: `
+      SELECT * FROM storybooks
+      WHERE LOWER(title) LIKE ? OR LOWER(authors) LIKE ? OR LOWER(categories) LIKE ? OR LOWER(description) LIKE ?
+      ORDER BY created_at DESC
+      LIMIT ?
+    `,
+    args: [pattern, pattern, pattern, pattern, limit],
+  });
   const list: Storybook[] = [];
   for (const row of res.rows) {
     const chRes = await dbClient.execute({
@@ -725,6 +952,7 @@ export async function getAllStorybooks(): Promise<Storybook[]> {
       likes_count: likesCount,
       thumbnail_url: (row.thumbnail_url as string) || "",
       characters: (row.characters as string) || "[]",
+      ost: (row.ost as string) || "[]",
     });
   }
   return list;
@@ -751,24 +979,24 @@ export async function deleteStorybook(id: string): Promise<boolean> {
 }
 
 
-// Shared Character Helpers
-export async function createSharedCharacter(
+// Character Helpers
+export async function createCharacter(
   id: string,
   name: string,
-  other_info: string,
+  description: string,
   storyverse_id: string,
   author: string,
   thumbnail_url = ""
-): Promise<SharedCharacter> {
+): Promise<Character> {
   const created_at = new Date().toISOString();
   await dbClient.execute({
-    sql: `INSERT INTO shared_characters (id, name, other_info, storyverse_id, author, created_at, thumbnail_url) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    args: [id, name, other_info, storyverse_id, author.toLowerCase(), created_at, thumbnail_url],
+    sql: `INSERT INTO shared_characters (id, name, description, storyverse_id, author, created_at, thumbnail_url) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    args: [id, name, description, storyverse_id, author.toLowerCase(), created_at, thumbnail_url],
   });
-  return { id, name, other_info, storyverse_id, author: author.toLowerCase(), created_at, thumbnail_url };
+  return { id, name, description, storyverse_id, author: author.toLowerCase(), created_at, thumbnail_url };
 }
 
-export async function getSharedCharacterById(id: string): Promise<SharedCharacter | null> {
+export async function getCharacterById(id: string): Promise<Character | null> {
   const res = await dbClient.execute({
     sql: `SELECT * FROM shared_characters WHERE id = ?`,
     args: [id],
@@ -781,7 +1009,7 @@ export async function getSharedCharacterById(id: string): Promise<SharedCharacte
   return {
     id: row.id as string,
     name: row.name as string,
-    other_info: row.other_info as string,
+    description: row.description as string,
     storyverse_id: row.storyverse_id as string,
     author: row.author as string,
     created_at: row.created_at as string,
@@ -791,19 +1019,105 @@ export async function getSharedCharacterById(id: string): Promise<SharedCharacte
   };
 }
 
-export async function getCharactersByStoryverse(storyverse_id: string): Promise<SharedCharacter[]> {
+export async function getCharactersByStoryverse(storyverse_id: string): Promise<Character[]> {
   const res = await dbClient.execute({
     sql: `SELECT * FROM shared_characters WHERE storyverse_id = ?`,
     args: [storyverse_id],
   });
-  const list: SharedCharacter[] = [];
+  const list: Character[] = [];
   for (const row of res.rows) {
     const commentsCount = await getCommentsCount("character", row.id as string);
     const likesCount = await getLikesCount("character", row.id as string);
     list.push({
       id: row.id as string,
       name: row.name as string,
-      other_info: row.other_info as string,
+      description: row.description as string,
+      storyverse_id: row.storyverse_id as string,
+      author: row.author as string,
+      created_at: row.created_at as string,
+      comments_count: commentsCount,
+      likes_count: likesCount,
+      thumbnail_url: (row.thumbnail_url as string) || "",
+    });
+  }
+  return list;
+}
+
+async function charactersFromRows(rows: any[]): Promise<Character[]> {
+  const list: Character[] = [];
+  for (const row of rows) {
+    const commentsCount = await getCommentsCount("character", row.id as string);
+    const likesCount = await getLikesCount("character", row.id as string);
+    list.push({
+      id: row.id as string,
+      name: row.name as string,
+      description: row.description as string,
+      storyverse_id: row.storyverse_id as string,
+      author: row.author as string,
+      created_at: row.created_at as string,
+      comments_count: commentsCount,
+      likes_count: likesCount,
+      thumbnail_url: (row.thumbnail_url as string) || "",
+    });
+  }
+  return list;
+}
+
+export async function getAllCharacters(): Promise<Character[]> {
+  const res = await dbClient.execute(`SELECT * FROM shared_characters ORDER BY created_at DESC`);
+  return await charactersFromRows(res.rows);
+}
+
+export async function getCharactersPaginated(page = 1, pageSize = 12): Promise<PageResult<Character>> {
+  const pageNum = clampPage(page);
+  const size = clampPageSize(pageSize);
+  const offset = (pageNum - 1) * size;
+  const countRes = await dbClient.execute(`SELECT COUNT(*) as count FROM shared_characters`);
+  const total = Number(countRes.rows[0].count);
+  const res = await dbClient.execute({
+    sql: `SELECT * FROM shared_characters ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+    args: [size, offset],
+  });
+  const items = await charactersFromRows(res.rows);
+  return { items, total, page: pageNum, pageSize: size, totalPages: Math.max(1, Math.ceil(total / size)) };
+}
+
+export async function getCharactersByAuthorPaginated(username: string, page = 1, pageSize = 10): Promise<PageResult<Character>> {
+  const pageNum = clampPage(page);
+  const size = clampPageSize(pageSize, 10);
+  const offset = (pageNum - 1) * size;
+  const countRes = await dbClient.execute({
+    sql: `SELECT COUNT(*) as count FROM shared_characters WHERE author = ?`,
+    args: [username.toLowerCase()],
+  });
+  const total = Number(countRes.rows[0].count);
+  const res = await dbClient.execute({
+    sql: `SELECT * FROM shared_characters WHERE author = ? ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+    args: [username.toLowerCase(), size, offset],
+  });
+  const items = await charactersFromRows(res.rows);
+  return { items, total, page: pageNum, pageSize: size, totalPages: Math.max(1, Math.ceil(total / size)) };
+}
+
+export async function searchCharacters(query: string, limit = 10): Promise<any[]> {
+  const pattern = `%${query.toLowerCase().trim()}%`;
+  const res = await dbClient.execute({
+    sql: `
+      SELECT * FROM shared_characters
+      WHERE LOWER(name) LIKE ? OR LOWER(description) LIKE ? OR LOWER(author) LIKE ?
+      ORDER BY created_at DESC
+      LIMIT ?
+    `,
+    args: [pattern, pattern, pattern, limit],
+  });
+  const list: any[] = [];
+  for (const row of res.rows) {
+    const commentsCount = await getCommentsCount("character", row.id as string);
+    const likesCount = await getLikesCount("character", row.id as string);
+    list.push({
+      id: row.id as string,
+      name: row.name as string,
+      description: row.description as string,
       storyverse_id: row.storyverse_id as string,
       author: row.author as string,
       created_at: row.created_at as string,
@@ -816,23 +1130,23 @@ export async function getCharactersByStoryverse(storyverse_id: string): Promise<
 }
 
 
-export async function updateSharedCharacter(id: string, name: string, other_info: string, thumbnail_url?: string): Promise<boolean> {
+export async function updateCharacter(id: string, name: string, description: string, thumbnail_url?: string): Promise<boolean> {
   let res;
   if (thumbnail_url !== undefined) {
     res = await dbClient.execute({
-      sql: `UPDATE shared_characters SET name = ?, other_info = ?, thumbnail_url = ? WHERE id = ?`,
-      args: [name, other_info, thumbnail_url, id],
+      sql: `UPDATE shared_characters SET name = ?, description = ?, thumbnail_url = ? WHERE id = ?`,
+      args: [name, description, thumbnail_url, id],
     });
   } else {
     res = await dbClient.execute({
-      sql: `UPDATE shared_characters SET name = ?, other_info = ? WHERE id = ?`,
-      args: [name, other_info, id],
+      sql: `UPDATE shared_characters SET name = ?, description = ? WHERE id = ?`,
+      args: [name, description, id],
     });
   }
   return res.rowsAffected > 0;
 }
 
-export async function deleteSharedCharacter(id: string): Promise<boolean> {
+export async function deleteCharacter(id: string): Promise<boolean> {
   const res = await dbClient.execute({
     sql: `DELETE FROM shared_characters WHERE id = ?`,
     args: [id],
@@ -947,15 +1261,18 @@ export async function addComment(
   content: string,
   reply_to: string | null,
   target_type: "storybook" | "storyverse" | "character",
-  target_id: string
+  target_id: string,
+  author_display_name?: string
 ): Promise<Comment> {
   const created_at = new Date().toISOString();
-  await dbClient.execute({
-    sql: `INSERT INTO comments (id, author, content, reply_to, target_type, target_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    args: [id, author.toLowerCase(), content, reply_to, target_type, target_id, created_at],
-  });
-
   const user = await getUserByUsername(author);
+  // Prefer an explicit override (e.g. the AI author name from MCP), then the user's display name
+  const resolvedDisplayName = author_display_name || user?.display_name || author;
+
+  await dbClient.execute({
+    sql: `INSERT INTO comments (id, author, content, reply_to, target_type, target_id, created_at, author_display_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [id, author.toLowerCase(), content, reply_to, target_type, target_id, created_at, resolvedDisplayName],
+  });
 
   return {
     id,
@@ -965,7 +1282,7 @@ export async function addComment(
     target_type,
     target_id,
     created_at,
-    author_display_name: user?.display_name || author,
+    author_display_name: resolvedDisplayName,
   };
 }
 
@@ -975,7 +1292,7 @@ export async function getCommentsForTarget(
 ): Promise<Comment[]> {
   const res = await dbClient.execute({
     sql: `
-      SELECT c.*, u.display_name as author_display_name
+      SELECT c.*, u.display_name as user_display_name
       FROM comments c
       LEFT JOIN users u ON c.author = u.username
       WHERE c.target_type = ? AND c.target_id = ?
@@ -992,7 +1309,8 @@ export async function getCommentsForTarget(
     reply_to: row.reply_to as string | null,
     target_type: row.target_type as "storybook" | "storyverse" | "character",
     target_id: row.target_id as string,
-    author_display_name: (row.author_display_name as string) || (row.author as string),
+    // Prefer the stored override (AI author name), then the user's display name
+    author_display_name: (row.author_display_name as string) || (row.user_display_name as string) || (row.author as string),
     replies: [],
   }));
 
@@ -1149,20 +1467,9 @@ export async function createNotification(
   return { id, username: username.toLowerCase(), sender: sender.toLowerCase(), type, target_type, target_id, comment_id, content, is_read: false, created_at };
 }
 
-export async function getNotificationsForUser(username: string): Promise<Notification[]> {
-  const res = await dbClient.execute({
-    sql: `
-      SELECT n.*, u.display_name as sender_display_name
-      FROM notifications n
-      LEFT JOIN users u ON n.sender = u.username
-      WHERE n.username = ?
-      ORDER BY n.created_at DESC
-    `,
-    args: [username.toLowerCase()],
-  });
-
+async function notificationsFromRows(rows: any[]): Promise<Notification[]> {
   const notifications: Notification[] = [];
-  for (const row of res.rows) {
+  for (const row of rows) {
     let target_title = "Liên kết";
     const t_type = row.target_type as string;
     const t_id = row.target_id as string;
@@ -1173,7 +1480,7 @@ export async function getNotificationsForUser(username: string): Promise<Notific
       const sv = await getStoryverseById(t_id);
       if (sv) target_title = sv.title;
     } else if (t_type === "character") {
-      const c = await getSharedCharacterById(t_id);
+      const c = await getCharacterById(t_id);
       if (c) target_title = c.name;
     }
 
@@ -1193,6 +1500,44 @@ export async function getNotificationsForUser(username: string): Promise<Notific
     });
   }
   return notifications;
+}
+
+export async function getNotificationsForUser(username: string): Promise<Notification[]> {
+  const res = await dbClient.execute({
+    sql: `
+      SELECT n.*, u.display_name as sender_display_name
+      FROM notifications n
+      LEFT JOIN users u ON n.sender = u.username
+      WHERE n.username = ?
+      ORDER BY n.created_at DESC
+    `,
+    args: [username.toLowerCase()],
+  });
+  return await notificationsFromRows(res.rows);
+}
+
+export async function getNotificationsPaginated(username: string, page = 1, pageSize = 15): Promise<PageResult<Notification>> {
+  const pageNum = clampPage(page);
+  const size = clampPageSize(pageSize, 15);
+  const offset = (pageNum - 1) * size;
+  const countRes = await dbClient.execute({
+    sql: `SELECT COUNT(*) as count FROM notifications WHERE username = ?`,
+    args: [username.toLowerCase()],
+  });
+  const total = Number(countRes.rows[0].count);
+  const res = await dbClient.execute({
+    sql: `
+      SELECT n.*, u.display_name as sender_display_name
+      FROM notifications n
+      LEFT JOIN users u ON n.sender = u.username
+      WHERE n.username = ?
+      ORDER BY n.created_at DESC
+      LIMIT ? OFFSET ?
+    `,
+    args: [username.toLowerCase(), size, offset],
+  });
+  const items = await notificationsFromRows(res.rows);
+  return { items, total, page: pageNum, pageSize: size, totalPages: Math.max(1, Math.ceil(total / size)) };
 }
 
 export async function markNotificationAsRead(id: string): Promise<boolean> {

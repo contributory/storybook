@@ -1,9 +1,12 @@
 /** @jsxImportSource npm:hono@4.5.11/jsx */
 import { html } from "npm:hono/html";
 import * as db from "../db.ts";
+import { markdownToText } from "./markdown.ts";
+import { renderPagination } from "./pagination.tsx";
 
 // Homepage View
-export function renderHomepage(storybooks: db.Storybook[], progress: db.ReadingProgress[], user: db.User | null) {
+export function renderHomepage(booksResult: db.PageResult<db.Storybook>, progress: db.ReadingProgress[], user: db.User | null) {
+  const storybooks = booksResult.items;
   // Compute Categories from books
   const allCategories = new Set<string>();
   storybooks.forEach(b => {
@@ -63,7 +66,7 @@ export function renderHomepage(storybooks: db.Storybook[], progress: db.ReadingP
                 <!-- Cover Image Placeholder (gradient-mesh style) -->
                 <div class="h-40 bg-gradient-to-br from-amber-600/20 via-slate-800 to-yellow-600/10 p-6 flex flex-col justify-end relative overflow-hidden border-b border-gray-200 dark:border-gray-800">
                     <div class="absolute inset-0 opacity-15 group-hover:opacity-25 transition-opacity bg-cover bg-center" style="background-image: url('${b.thumbnail_url || "https://maxm-imggenurl.web.val.run/a-minimalistic-fantasy-novel-cover-illustration-art-style"}')"></div>
-                    <div class="absolute top-4 right-4 flex space-x-1.5 relative z-10">
+                    <div class="absolute top-4 right-4 flex space-x-1.5 z-10">
                         ${b.allow_other_author_edit ? html`
                         <span class="px-2 py-0.5 rounded bg-green-500/10 text-green-400 border border-green-500/20 text-[10px] font-bold" title="Những người dùng khác được phép đồng sáng tác"><i class="fa-solid fa-users mr-1"></i> Cộng tác</span>
                         ` : html`
@@ -84,7 +87,7 @@ export function renderHomepage(storybooks: db.Storybook[], progress: db.ReadingP
                         <a href="/storybook/${b.id}" class="after:absolute after:inset-0">
                             <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100 group-hover:text-amber-400 transition-colors line-clamp-1">${b.title}</h3>
                         </a>
-                        <p class="text-sm text-gray-600 dark:text-gray-400 line-clamp-3 leading-relaxed relative z-10">${b.description}</p>
+                        <p class="text-sm text-gray-600 dark:text-gray-400 line-clamp-3 leading-relaxed relative z-10">${markdownToText(b.description)}</p>
                     </div>
 
                     <div class="pt-4 border-t border-gray-200 dark:border-gray-800/80 flex items-center justify-between text-xs text-gray-600 dark:text-gray-400 relative z-10">
@@ -102,6 +105,8 @@ export function renderHomepage(storybooks: db.Storybook[], progress: db.ReadingP
             `)}
         </div>
     </section>
+
+    ${renderPagination(booksResult, "/")}
 
     <script>
         function filterCategory(cat) {

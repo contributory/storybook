@@ -1,9 +1,11 @@
 /** @jsxImportSource npm:hono@4.5.11/jsx */
 import { html } from "npm:hono/html";
 import * as db from "../db.ts";
+import { renderPagination } from "./pagination.tsx";
 
 // Admin panel View
-export function renderAdminPanel(users: db.User[]) {
+export function renderAdminPanel(usersResult: db.PageResult<db.User>) {
+  const users = usersResult.items;
   return html`
     <div class="max-w-4xl mx-auto space-y-8 text-left">
         <div class="space-y-2">
@@ -12,7 +14,7 @@ export function renderAdminPanel(users: db.User[]) {
         </div>
 
         <div class="bg-white dark:bg-[#161925]/30 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 sm:p-8 space-y-6">
-            <h3 class="text-xl font-bold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-800 pb-3">Danh sách thành viên (${users.length})</h3>
+            <h3 class="text-xl font-bold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-800 pb-3">Danh sách thành viên (${usersResult.total})</h3>
 
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse text-sm">
@@ -51,6 +53,8 @@ export function renderAdminPanel(users: db.User[]) {
                     </tbody>
                 </table>
             </div>
+
+            ${renderPagination(usersResult, "/admin")}
         </div>
     </div>
 
