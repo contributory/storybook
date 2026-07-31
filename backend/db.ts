@@ -1,4 +1,4 @@
-import { createClient, type Client } from "npm:@libsql/client";
+import { createClient, type Client } from "npm:@libsql/client/web";
 
 // Environment variables
 const TURSO_DB_URL = Deno.env.get("TURSO_DB_URL") || "";
