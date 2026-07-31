@@ -14,39 +14,6 @@ export function renderHomepage(storybooks: db.Storybook[], progress: db.ReadingP
   });
 
   return html`
-    <!-- Hero Banner -->
-    <section class="relative bg-gradient-to-r from-amber-600/10 via-yellow-500/5 to-transparent border border-amber-500/10 rounded-3xl p-8 sm:p-12 mb-12 flex flex-col md:flex-row items-center justify-between overflow-hidden">
-        <div class="absolute -top-24 -left-24 w-72 h-72 rounded-full bg-amber-500/10 blur-3xl pointer-events-none"></div>
-        <div class="absolute -bottom-24 -right-24 w-72 h-72 rounded-full bg-yellow-500/5 blur-3xl pointer-events-none"></div>
-
-        <div class="space-y-6 max-w-2xl text-left">
-            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                <i class="fa-solid fa-sparkles mr-1.5"></i> Kỷ Nguyên Kể Chuyện Cộng Tác
-            </span>
-            <h1 class="text-4xl sm:text-5xl font-black text-gray-900 dark:text-white leading-tight">
-                Nơi Thế Giới Truyện Được <span class="bg-gradient-to-r from-amber-400 to-yellow-300 bg-clip-text text-transparent">Dệt Nên</span> Cùng Nhau
-            </h1>
-            <p class="text-gray-600 dark:text-gray-400 text-lg leading-relaxed">
-                Đọc, sáng tạo và mở rộng các vũ trụ cốt truyện đa chiều. Kết hợp giữa trí tuệ cộng đồng và AI Assistant thông minh để tạo nên những tác phẩm bất hủ.
-            </p>
-            <div class="flex flex-wrap gap-4 pt-2">
-                <a href="#discover" class="px-6 py-3 bg-gradient-to-r from-amber-500 to-yellow-400 text-black font-bold rounded-xl shadow-lg shadow-yellow-500/15 hover:brightness-110 transition-all flex items-center space-x-2">
-                    <span>Khám phá ngay</span>
-                    <i class="fa-solid fa-arrow-right"></i>
-                </a>
-                <a href="/storyverses" class="px-6 py-3 bg-gray-200 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white font-semibold rounded-xl hover:bg-gray-300 dark:hover:bg-gray-700/80 transition-all flex items-center space-x-2">
-                    <i class="fa-solid fa-earth-asia"></i>
-                    <span>Xem các vũ trụ</span>
-                </a>
-            </div>
-        </div>
-
-        <!-- Decorative Book Stack / Illustration -->
-        <div class="hidden lg:block relative w-80 h-64">
-            <img src="https://maxm-imggenurl.web.val.run/a-beautiful-mystical-golden-book-opening-with-stardust-and-constellations-fantasy-dark-background" alt="Mystical Book" class="w-full h-full object-cover rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800/80 hover:rotate-2 transition-transform duration-500">
-        </div>
-    </section>
-
     <!-- Reading Progress Section (Đọc tiếp) -->
     ${progress && progress.length > 0 ? html`
     <section class="mb-12">

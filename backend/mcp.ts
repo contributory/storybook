@@ -401,7 +401,7 @@ export async function executeMcpTool(name: string, args: any, user: db.User): Pr
       case "comment_to": {
         const { content, reply_to, target_type, target_id } = args;
         const commentId = `comment_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-        const res = await db.addComment(commentId, "AI", content, reply_to || null, target_type, target_id);
+        const res = await db.addComment(commentId, user.username, content, reply_to || null, target_type, target_id);
         return { success: true, comment: res };
       }
 

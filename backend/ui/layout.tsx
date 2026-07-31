@@ -21,7 +21,7 @@ export function layout(title: string, content: any, user: db.User | null, curren
             theme: {
                 extend: {
                     fontFamily: {
-                        serif: ['Georgia', 'Cambria', 'Times New Roman', 'Times', 'serif'],
+                        serif: ['Lora', 'Merriweather', 'Georgia', 'serif'],
                         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
                     }
                 }
@@ -29,14 +29,14 @@ export function layout(title: string, content: any, user: db.User | null, curren
         }
     </script>
     <!-- Google Fonts & FontAwesome Icons -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body {
             font-family: 'Inter', sans-serif;
         }
         .reader-font {
-            font-family: 'Georgia', serif;
+            font-family: 'Lora', 'Merriweather', 'Georgia', serif;
         }
         /* Hide scrollbar but keep functionality */
         .no-scrollbar::-webkit-scrollbar {
@@ -117,7 +117,12 @@ export function layout(title: string, content: any, user: db.User | null, curren
     <!-- Header / Navbar -->
     <header class="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-[#161925]/90 backdrop-blur sticky top-0 z-50 transition-all duration-300">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <div class="flex items-center space-x-8">
+            <div class="flex items-center space-x-4 md:space-x-8">
+                <!-- Mobile Menu Button -->
+                <button onclick="toggleMobileMenu()" class="md:hidden p-2 -ml-2 text-gray-600 dark:text-gray-400 hover:text-amber-500 transition-colors focus:outline-none">
+                    <i class="fa-solid fa-bars text-xl"></i>
+                </button>
+
                 <!-- Logo -->
                 <a href="/" class="flex items-center space-x-2 group">
                     <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-yellow-400 flex items-center justify-center text-black font-bold text-xl shadow-lg shadow-yellow-500/10 group-hover:scale-105 transition-transform">
@@ -162,22 +167,30 @@ export function layout(title: string, content: any, user: db.User | null, curren
                     <i id="theme-toggle-icon" class="fa-solid fa-desktop"></i>
                 </button>
                 ${user ? html`
-                <div class="flex items-center space-x-3">
-                    <a href="/profile/${user.username}" class="flex items-center space-x-3 group">
+                <div class="relative inline-block text-left" id="user-menu-container">
+                    <button onclick="toggleUserMenu()" class="flex items-center space-x-3 group focus:outline-none">
                         <div class="hidden sm:flex flex-col items-end text-right">
                             <span class="text-sm font-semibold text-gray-800 dark:text-gray-200 group-hover:text-amber-400 transition-colors">${user.display_name}</span>
                             <span class="text-xs text-amber-500 font-medium">@${user.username} ${user.is_owner ? "(Owner)" : user.is_admin ? "(Admin)" : ""}</span>
                         </div>
-                        <div class="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 flex items-center justify-center text-amber-400 font-bold uppercase ring-2 ring-amber-500/20 group-hover:scale-105 transition-transform">
+                        <div class="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 flex items-center justify-center text-amber-400 font-bold uppercase ring-2 ring-amber-500/20 group-hover:scale-105 transition-transform cursor-pointer">
                             ${user.display_name.charAt(0)}
                         </div>
-                    </a>
-                    <a href="/settings" class="p-2 text-gray-600 dark:text-gray-400 hover:text-amber-500 transition-colors" title="Cài đặt cá nhân">
-                        <i class="fa-solid fa-gear text-lg"></i>
-                    </a>
-                    <button onclick="logout()" class="p-2 text-gray-600 dark:text-gray-400 hover:text-red-400 transition-colors" title="Đăng xuất">
-                        <i class="fa-solid fa-right-from-bracket text-lg"></i>
                     </button>
+                    
+                    <!-- Dropdown menu -->
+                    <div id="user-dropdown-menu" class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-[#161925] border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg py-1 z-50 origin-top-right">
+                        <a href="/profile/${user.username}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-amber-500 transition-colors">
+                            <i class="fa-regular fa-user mr-2 w-4 text-center"></i> Trang cá nhân
+                        </a>
+                        <a href="/settings" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-amber-500 transition-colors">
+                            <i class="fa-solid fa-gear mr-2 w-4 text-center"></i> Cài đặt
+                        </a>
+                        <div class="border-t border-gray-200 dark:border-gray-700 my-1"></div>
+                        <button onclick="logout()" class="w-full text-left block px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                            <i class="fa-solid fa-right-from-bracket mr-2 w-4 text-center"></i> Đăng xuất
+                        </button>
+                    </div>
                 </div>
                 ` : html`
                 <div class="flex items-center space-x-3">
@@ -188,6 +201,35 @@ export function layout(title: string, content: any, user: db.User | null, curren
             </div>
         </div>
     </header>
+
+    <!-- Mobile Navigation Menu (Hidden by default) -->
+    <div id="mobile-menu" class="hidden md:hidden border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-[#161925] px-4 py-2 space-y-1">
+        <a href="/" class="block px-3 py-2 rounded-md text-base font-medium ${currentPath === "/" ? "bg-gray-100 dark:bg-gray-800 text-amber-500" : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50"}">
+            <i class="fa-solid fa-house w-6 text-center"></i> Trang chủ
+        </a>
+        <a href="/storybooks" class="block px-3 py-2 rounded-md text-base font-medium ${currentPath.startsWith("/storybooks") ? "bg-gray-100 dark:bg-gray-800 text-amber-500" : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50"}">
+            <i class="fa-solid fa-book w-6 text-center"></i> Bộ truyện
+        </a>
+        <a href="/storyverses" class="block px-3 py-2 rounded-md text-base font-medium ${currentPath.startsWith("/storyverses") ? "bg-gray-100 dark:bg-gray-800 text-amber-500" : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50"}">
+            <i class="fa-solid fa-earth-asia w-6 text-center"></i> Vũ trụ truyện
+        </a>
+        ${user && user.is_creator ? html`
+        <a href="/creator" class="block px-3 py-2 rounded-md text-base font-medium ${currentPath.startsWith("/creator") ? "bg-gray-100 dark:bg-gray-800 text-amber-500" : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50"}">
+            <i class="fa-solid fa-feather-pointed w-6 text-center"></i> Nhà sáng tạo
+        </a>
+        ` : ""}
+        ${isAdmin ? html`
+        <a href="/admin" class="block px-3 py-2 rounded-md text-base font-medium ${currentPath.startsWith("/admin") ? "bg-gray-100 dark:bg-gray-800 text-amber-500" : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50"}">
+            <i class="fa-solid fa-user-shield w-6 text-center"></i> Admin
+        </a>
+        ` : ""}
+        ${user ? html`
+        <a href="/notifications" class="block px-3 py-2 rounded-md text-base font-medium ${currentPath === "/notifications" ? "bg-gray-100 dark:bg-gray-800 text-amber-500" : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50"}">
+            <i class="fa-solid fa-bell w-6 text-center"></i> Thông báo
+            ${unreadNotifsCount > 0 ? html`<span class="ml-2 inline-flex items-center justify-center bg-red-500 text-white font-bold text-xs px-2 py-0.5 rounded-full">${unreadNotifsCount}</span>` : ""}
+        </a>
+        ` : ""}
+    </div>
 
     <!-- Main Container -->
     <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -209,7 +251,7 @@ export function layout(title: string, content: any, user: db.User | null, curren
 
     <!-- Auth Modal -->
     <div id="authModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
-        <div class="bg-white dark:bg-[#161925] border border-gray-200 dark:border-gray-800 rounded-2xl w-full max-w-md p-8 relative shadow-2xl transform scale-95 transition-transform duration-300">
+        <div class="bg-white dark:bg-[#161925] border border-gray-200 dark:border-gray-800 rounded-2xl w-full max-w-md p-8 relative shadow-2xl transform scale-95 transition-transform duration-300 max-h-[90vh] overflow-y-auto">
             <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:text-white">
                 <i class="fa-solid fa-xmark text-xl"></i>
             </button>
@@ -250,6 +292,32 @@ export function layout(title: string, content: any, user: db.User | null, curren
 
     <!-- Global Client Script -->
     <script>
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            if (menu) {
+                menu.classList.toggle('hidden');
+            }
+        }
+
+        function toggleUserMenu() {
+            const menu = document.getElementById('user-dropdown-menu');
+            if (menu) {
+                menu.classList.toggle('hidden');
+            }
+        }
+        
+        if (typeof window !== 'undefined') {
+            window.addEventListener('click', function(e) {
+                const container = document.getElementById('user-menu-container');
+                if (container && !container.contains(e.target)) {
+                    const menu = document.getElementById('user-dropdown-menu');
+                    if (menu && !menu.classList.contains('hidden')) {
+                        menu.classList.add('hidden');
+                    }
+                }
+            });
+        }
+
         function openAuthModal(type = 'login') {
             const modal = document.getElementById('authModal');
             const typeInput = document.getElementById('authType');

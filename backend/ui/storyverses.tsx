@@ -126,7 +126,7 @@ export function renderStoryverseDetail(sv: db.Storyverse, characters: db.SharedC
 
     <!-- Edit Universe Modal -->
     <div id="editUniverseModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
-        <div class="bg-white dark:bg-[#161925] border border-gray-200 dark:border-gray-800 rounded-2xl w-full max-w-md p-8 relative shadow-2xl transform scale-95 transition-transform duration-300 text-left">
+        <div class="bg-white dark:bg-[#161925] border border-gray-200 dark:border-gray-800 rounded-2xl w-full max-w-md p-8 relative shadow-2xl transform scale-95 transition-transform duration-300 text-left max-h-[90vh] overflow-y-auto">
             <button onclick="closeEditUniverseModal()" class="absolute top-4 right-4 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:text-white">
                 <i class="fa-solid fa-xmark text-xl"></i>
             </button>
@@ -160,7 +160,7 @@ export function renderStoryverseDetail(sv: db.Storyverse, characters: db.SharedC
 
     <!-- Edit Shared Character Modal -->
     <div id="editCharModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
-        <div class="bg-white dark:bg-[#161925] border border-gray-200 dark:border-gray-800 rounded-2xl w-full max-w-md p-8 relative shadow-2xl transform scale-95 transition-transform duration-300 text-left">
+        <div class="bg-white dark:bg-[#161925] border border-gray-200 dark:border-gray-800 rounded-2xl w-full max-w-md p-8 relative shadow-2xl transform scale-95 transition-transform duration-300 text-left max-h-[90vh] overflow-y-auto">
             <button onclick="closeEditCharModal()" class="absolute top-4 right-4 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:text-white">
                 <i class="fa-solid fa-xmark text-xl"></i>
             </button>
