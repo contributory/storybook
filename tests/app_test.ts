@@ -1,7 +1,7 @@
 import { assertEquals, assertExists, assertNotEquals, assert } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import * as db from "../backend/db.ts";
 import { executeMcpTool, handleMcpRequest } from "../backend/mcp.ts";
-import app from "../backend/app.ts";
+import app, { sha256 } from "../backend/app.ts";
 
 // Initialize database schema once before running tests
 Deno.test({
@@ -174,7 +174,7 @@ Deno.test({
     assertEquals(await db.deleteCharacter(charId), true);
     assertEquals(await db.deleteStorybook(bookId), true);
     assertEquals(await db.deleteStoryverse(verseId), true);
-    assertEquals(await db.deleteUser(username), true);
+    assertEquals(await db.deleteUser(username, username), true);
   }
 });
 
@@ -270,9 +270,39 @@ Deno.test({
     assertEquals(await db.deleteCharacter(charId), true);
     assertEquals(await db.deleteStorybook(bookId), true);
     assertEquals(await db.deleteStoryverse(verseId), true);
-    assertEquals(await db.deleteUser(newName), true);
-    assertEquals(await db.deleteUser(adminName), true);
-    assertEquals(await db.deleteUser(normalName), true);
+    assertEquals(await db.deleteUser(adminName, newName), true);
+    assertEquals(await db.deleteUser(adminName, adminName), true);
+    assertEquals(await db.deleteUser(adminName, normalName), true);
+  }
+});
+
+Deno.test({
+  name: "Owner can edit/delete other owners (except env owner) Test",
+  fn: async () => {
+    const envOwner = (Deno.env.get("OWNER_USERNAME") || "owner").toLowerCase();
+    const otherOwner = `other_owner_${Date.now()}`;
+    const adminName = `owner_admin_${Date.now()}`;
+
+    // Create a separate owner (is_admin + is_owner) and a plain admin
+    await db.createUser(otherOwner, "Other Owner", "hashedpassword", true, true);
+    await db.createUser(adminName, "Plain Admin", "hashedpassword", true, false);
+
+    // Env owner can edit another owner's role
+    assertEquals(await db.updateUserRole(envOwner, otherOwner, false), true);
+    // Non-env-owner admin cannot edit an owner
+    assertEquals(await db.updateUserRole(adminName, otherOwner, false), false);
+    // No one can edit the env-var owner (including themselves)
+    assertEquals(await db.updateUserRole(envOwner, envOwner, true), false);
+
+    // Non-env-owner admin cannot delete an owner
+    assertEquals(await db.deleteUser(adminName, otherOwner), false);
+    // Env owner can delete another owner
+    assertEquals(await db.deleteUser(envOwner, otherOwner), true);
+    // No one can delete the env-var owner (including themselves)
+    assertEquals(await db.deleteUser(envOwner, envOwner), false);
+
+    // Cleanup
+    assertEquals(await db.deleteUser(envOwner, adminName), true);
   }
 });
 
@@ -361,8 +391,8 @@ Deno.test({
     // Cleanup
     assertEquals(await db.deleteStorybook(bookId), true);
     assertEquals(await db.deleteStoryverse(verseId), true);
-    assertEquals(await db.deleteUser(newName), true);
-    assertEquals(await db.deleteUser(username), true);
+    assertEquals(await db.deleteUser(username, newName), true);
+    assertEquals(await db.deleteUser(username, username), true);
   }
 });
 
@@ -439,5 +469,101 @@ Deno.test({
     assertEquals(markOk, true);
     const newCount = await db.getUnreadNotificationsCount(username);
     assertEquals(newCount, 0);
+  }
+});
+
+Deno.test({
+  name: "Creator Permission Enforcement on /create/* and Create APIs",
+  fn: async () => {
+    // Build a valid session cookie so requests pass the auth middleware
+    async function sessionCookie(u: db.User): Promise<string> {
+      const APP_SECRET = Deno.env.get("APP_SECRET") || "hono-deno-storybook-secret-key-123456";
+      const sessionHash = await sha256(`${u.username}:${u.password_hash}:${APP_SECRET}`);
+      return `user_username=${u.username}; user_session=${sessionHash}`;
+    }
+
+    const username = `creator_gate_${Date.now()}`;
+    const user = await db.createUser(username, "Creator Gate User", "pwd", false, false);
+    assertExists(user);
+    assertEquals(user.is_creator, false);
+    const cookie = await sessionCookie(user);
+
+    // 1. Non-creator cannot access /create/* pages (redirected to /settings)
+    for (const path of ["/create/storybook", "/create/storyverse", "/create/character"]) {
+      const res = await app.request(new Request(`http://localhost${path}`, {
+        headers: { Cookie: cookie }
+      }));
+      assertEquals(res.status, 302, `${path} should redirect non-creators`);
+      assertEquals(res.headers.get("location"), "/settings");
+    }
+
+    // 2. Non-creator cannot create content via API (403)
+    const bookPayload = { id: `gate_book_${Date.now()}`, title: "Gate Book", description: "d", categories: "Test", allow_other_author_edit: false };
+    const bookRes = await app.request(new Request("http://localhost/api/storybooks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookie },
+      body: JSON.stringify(bookPayload)
+    }));
+    assertEquals(bookRes.status, 403, "POST /api/storybooks should be forbidden for non-creators");
+
+    const verseRes = await app.request(new Request("http://localhost/api/storyverses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookie },
+      body: JSON.stringify({ id: `gate_verse_${Date.now()}`, title: "Gate Verse", description: "d" })
+    }));
+    assertEquals(verseRes.status, 403, "POST /api/storyverses should be forbidden for non-creators");
+
+    const charRes = await app.request(new Request("http://localhost/api/characters", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookie },
+      body: JSON.stringify({ id: `gate_char_${Date.now()}`, name: "Gate Char", description: "d", storyverse_id: "gate_verse_1" })
+    }));
+    assertEquals(charRes.status, 403, "POST /api/characters should be forbidden for non-creators");
+
+    // 3. Non-creator cannot create via MCP tools
+    const mcpRes = await executeMcpTool("create_storybook_info", {
+      id: `gate_mcp_book_${Date.now()}`,
+      title: "Gate MCP Book",
+      categories: "Test",
+      allow_other_author_edit: false
+    }, user);
+    assertEquals(mcpRes.success, false);
+    assert(mcpRes.error.includes("Forbidden"));
+
+    // 4. After enabling creator permission, everything works
+    await db.updateUserSettings(username, "Creator Gate User", true, "AI");
+    const enabledUser = await db.getUserByUsername(username);
+    assertExists(enabledUser);
+    assertEquals(enabledUser!.is_creator, true);
+
+    // Page is now accessible (200)
+    const pageRes = await app.request(new Request("http://localhost/create/storybook", {
+      headers: { Cookie: cookie }
+    }));
+    assertEquals(pageRes.status, 200, "Creator should be able to open /create/storybook");
+
+    // API create now succeeds (200)
+    const okBookId = `gate_book_ok_${Date.now()}`;
+    const okBookRes = await app.request(new Request("http://localhost/api/storybooks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookie },
+      body: JSON.stringify({ ...bookPayload, id: okBookId })
+    }));
+    assertEquals(okBookRes.status, 200, "Creator should be able to create a storybook");
+    const okData = await okBookRes.json();
+    assertEquals(okData.success, true);
+
+    // MCP create now works
+    const okMcp = await executeMcpTool("create_storybook_info", {
+      id: `gate_mcp_book_ok_${Date.now()}`,
+      title: "Gate MCP Book OK",
+      categories: "Test",
+      allow_other_author_edit: false
+    }, enabledUser);
+    assertEquals(okMcp.success, true);
+
+    // Cleanup
+    assertEquals(await db.deleteStorybook(okBookId), true);
+    assertEquals(await db.deleteUser(username, username), true);
   }
 });

@@ -4,8 +4,16 @@ import * as db from "../db.ts";
 import { renderPagination } from "./pagination.tsx";
 
 // Admin panel View
-export function renderAdminPanel(usersResult: db.PageResult<db.User>) {
+export function renderAdminPanel(usersResult: db.PageResult<db.User>, currentUser: db.User | null = null) {
   const users = usersResult.items;
+  const currentUsername = currentUser?.username?.toLowerCase() ?? "";
+  const isEnvOwner = db.isEnvOwnerUsername(currentUsername);
+  const rows = users.map(u => {
+    const isSelf = currentUsername && u.username.toLowerCase() === currentUsername;
+    // Env-var owner can manage anyone except themselves; admins can only manage non-owners
+    const canManage = !isSelf && (!u.is_owner || isEnvOwner);
+    return { u, isSelf, canManage };
+  });
   return html`
     <div class="max-w-4xl mx-auto space-y-8 text-left">
         <div class="space-y-2">
@@ -28,7 +36,7 @@ export function renderAdminPanel(usersResult: db.PageResult<db.User>) {
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-800/60">
-                        ${users.map(u => html`
+                        ${rows.map(({ u, isSelf, canManage }) => html`
                         <tr class="hover:bg-gray-200 dark:bg-gray-800/10 transition-colors">
                             <td class="py-3.5 px-4 font-semibold text-gray-800 dark:text-gray-200">${u.display_name}</td>
                             <td class="py-3.5 px-4 text-amber-500">@${u.username}</td>
@@ -39,14 +47,14 @@ export function renderAdminPanel(usersResult: db.PageResult<db.User>) {
                             </td>
                             <td class="py-3.5 px-4 text-xs text-gray-500 dark:text-gray-500">${new Date(u.join_date).toLocaleDateString("vi-VN")}</td>
                             <td class="py-3.5 px-4 text-right space-x-2">
-                                ${!u.is_owner ? html`
+                                ${canManage ? html`
                                 <button onclick="toggleAdminRole('${u.username}', ${u.is_admin ? "false" : "true"})" class="px-3 py-1.5 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-semibold transition-colors">
                                     ${u.is_admin ? "Hạ quyền" : "Lên Admin"}
                                 </button>
                                 <button onclick="deleteUser('${u.username}')" class="px-3 py-1.5 bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-black rounded-lg text-xs font-semibold transition-all">
                                     Xóa
                                 </button>
-                                ` : html`<span class="text-xs text-gray-600 italic">Vô hiệu hóa</span>`}
+                                ` : html`<span class="text-xs text-gray-600 italic">${isSelf ? "Chính bạn" : "Vô hiệu hóa"}</span>`}
                             </td>
                         </tr>
                         `)}

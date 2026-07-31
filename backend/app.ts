@@ -89,6 +89,12 @@ export async function renderWithLayout(c: any, title: string, rendered: any, cur
   return c.html(ui.layout(title, rendered, user, currentPath, count));
 }
 
+// Helper: check whether the user has enabled the "Nhà sáng tạo" (creator) permission.
+// Admins and the owner always bypass this check.
+export function hasCreatorAccess(user: db.User | null): boolean {
+  return !!user && (user.is_creator || user.is_admin || user.is_owner);
+}
+
 
 // --- S3 PROXY & UPLOAD API ---
 
@@ -238,7 +244,7 @@ app.get("/storybook/:id/chapter/:num", async c => {
 app.get("/creator", async c => {
   const user = c.get("user");
   if (!user) return c.redirect("/"); // Require login
-  if (!user.is_creator && !user.is_admin && !user.is_owner) {
+  if (!hasCreatorAccess(user)) {
     return c.redirect("/settings"); // Restrict access to /creator if not creator
   }
 
@@ -254,7 +260,8 @@ app.get("/creator", async c => {
 app.get("/create/storybook", async c => {
   const user = c.get("user");
   if (!user) return c.redirect("/");
-  if (!user.is_creator && !user.is_admin && !user.is_owner) return c.redirect("/settings");
+  // Require creator permission to access the create page
+  if (!hasCreatorAccess(user)) return c.redirect("/settings");
 
   const editId = (c.req.query("id") || "").trim();
   let book: db.Storybook | null = null;
@@ -274,7 +281,8 @@ app.get("/create/storybook", async c => {
 app.get("/create/storyverse", async c => {
   const user = c.get("user");
   if (!user) return c.redirect("/");
-  if (!user.is_creator && !user.is_admin && !user.is_owner) return c.redirect("/settings");
+  // Require creator permission to access the create page
+  if (!hasCreatorAccess(user)) return c.redirect("/settings");
 
   const editId = (c.req.query("id") || "").trim();
   let sv: db.Storyverse | null = null;
@@ -292,7 +300,8 @@ app.get("/create/storyverse", async c => {
 app.get("/create/character", async c => {
   const user = c.get("user");
   if (!user) return c.redirect("/");
-  if (!user.is_creator && !user.is_admin && !user.is_owner) return c.redirect("/settings");
+  // Require creator permission to access the create page
+  if (!hasCreatorAccess(user)) return c.redirect("/settings");
 
   const editId = (c.req.query("id") || "").trim();
   let char: db.Character | null = null;
@@ -315,7 +324,7 @@ app.get("/admin", async c => {
 
   const page = Number(c.req.query("page")) || 1;
   const users = await db.getUsersPaginated(page, 20);
-  const rendered = ui.renderAdminPanel(users);
+  const rendered = ui.renderAdminPanel(users, user);
   return await renderWithLayout(c, "Quản Trị Hệ Thống", rendered, "/admin");
 });
 
@@ -512,6 +521,10 @@ app.get("/api/storybooks", async c => {
 app.post("/api/storybooks", async c => {
   const user = c.get("user");
   if (!user) return c.json({ success: false, error: "Unauthorized" }, 401);
+  // Only users with the "Nhà sáng tạo" permission can create storybooks
+  if (!hasCreatorAccess(user)) {
+    return c.json({ success: false, error: "Forbidden: Bạn cần bật quyền Nhà sáng tạo trong cài đặt" }, 403);
+  }
 
   try {
     const { id, title, description, categories, allow_other_author_edit, storyverse_id, characters } = await c.req.json();
@@ -695,6 +708,10 @@ app.get("/api/storyverses", async c => {
 app.post("/api/storyverses", async c => {
   const user = c.get("user");
   if (!user) return c.json({ success: false, error: "Unauthorized" }, 401);
+  // Only users with the "Nhà sáng tạo" permission can create storyverses
+  if (!hasCreatorAccess(user)) {
+    return c.json({ success: false, error: "Forbidden: Bạn cần bật quyền Nhà sáng tạo trong cài đặt" }, 403);
+  }
 
   try {
     const { id, title, description } = await c.req.json();
@@ -770,6 +787,10 @@ app.get("/api/characters/:id", async c => {
 app.post("/api/characters", async c => {
   const user = c.get("user");
   if (!user) return c.json({ success: false, error: "Unauthorized" }, 401);
+  // Only users with the "Nhà sáng tạo" permission can create shared characters
+  if (!hasCreatorAccess(user)) {
+    return c.json({ success: false, error: "Forbidden: Bạn cần bật quyền Nhà sáng tạo trong cài đặt" }, 403);
+  }
 
   try {
     const { id, name, description, storyverse_id } = await c.req.json();
@@ -1063,7 +1084,7 @@ app.put("/api/admin/users/:username/role", async c => {
   const target = c.req.param("username");
   const { is_admin } = await c.req.json();
 
-  const ok = await db.updateUserRole(target, !!is_admin);
+  const ok = await db.updateUserRole(user.username, target, !!is_admin);
   return c.json({ success: ok, message: ok ? "User role updated" : "Failed" });
 });
 
@@ -1074,7 +1095,7 @@ app.delete("/api/admin/users/:username", async c => {
   }
 
   const target = c.req.param("username");
-  const ok = await db.deleteUser(target);
+  const ok = await db.deleteUser(user.username, target);
   return c.json({ success: ok, message: ok ? "User deleted" : "Failed" });
 });
 

@@ -10,6 +10,13 @@ const S3_SECRET_ACCESS_KEY = Deno.env.get("S3_SECRET_ACCESS_KEY") || "";
 const S3_BUCKET = Deno.env.get("S3_BUCKET") || "";
 const S3_REGION = Deno.env.get("S3_REGION") || "auto";
 
+// The root owner account defined by environment variables (protected from being edited/deleted)
+const OWNER_USERNAME = (Deno.env.get("OWNER_USERNAME") || "owner").toLowerCase();
+
+export function isEnvOwnerUsername(username: string): boolean {
+  return username.toLowerCase() === OWNER_USERNAME;
+}
+
 // Database client initialization
 let dbClient: Client;
 if (TURSO_DB_URL) {
@@ -536,18 +543,36 @@ export async function getUserByApiToken(api_token: string): Promise<User | null>
   };
 }
 
-export async function updateUserRole(username: string, is_admin: boolean): Promise<boolean> {
+// Update a user's admin role. The env-var owner can edit any user (including other owners)
+// except themselves; admins can only edit non-owner users.
+export async function updateUserRole(actor: string, username: string, is_admin: boolean): Promise<boolean> {
+  const target = username.toLowerCase();
+  // The env-var owner account is protected — no one (including themselves) may change it
+  if (target === OWNER_USERNAME) return false;
+  const targetUser = await getUserByUsername(target);
+  if (!targetUser) return false;
+  // Only the env-var owner may edit other owners
+  if (targetUser.is_owner && actor.toLowerCase() !== OWNER_USERNAME) return false;
   const res = await dbClient.execute({
-    sql: `UPDATE users SET is_admin = ? WHERE username = ? AND is_owner = 0`,
-    args: [is_admin ? 1 : 0, username.toLowerCase()],
+    sql: `UPDATE users SET is_admin = ? WHERE username = ?`,
+    args: [is_admin ? 1 : 0, target],
   });
   return res.rowsAffected > 0;
 }
 
-export async function deleteUser(username: string): Promise<boolean> {
+// Delete a user. The env-var owner can delete any user (including other owners) except
+// themselves; admins can only delete non-owner users.
+export async function deleteUser(actor: string, username: string): Promise<boolean> {
+  const target = username.toLowerCase();
+  // The env-var owner account is protected — no one (including themselves) may delete it
+  if (target === OWNER_USERNAME) return false;
+  const targetUser = await getUserByUsername(target);
+  if (!targetUser) return false;
+  // Only the env-var owner may delete other owners
+  if (targetUser.is_owner && actor.toLowerCase() !== OWNER_USERNAME) return false;
   const res = await dbClient.execute({
-    sql: `DELETE FROM users WHERE username = ? AND is_owner = 0`,
-    args: [username.toLowerCase()],
+    sql: `DELETE FROM users WHERE username = ?`,
+    args: [target],
   });
   return res.rowsAffected > 0;
 }

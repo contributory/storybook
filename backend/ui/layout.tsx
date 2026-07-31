@@ -168,22 +168,6 @@ export function layout(title: string, content: any, user: db.User | null, curren
                     <a href="/characters" class="transition-colors hover:text-amber-400 ${currentPath.startsWith("/characters") ? "text-amber-400" : "text-gray-700 dark:text-gray-300"}">
                         <i class="fa-solid fa-users mr-1.5"></i> Nhân vật
                     </a>
-                    ${user && user.is_creator ? html`
-                    <a href="/creator" class="transition-colors hover:text-amber-400 ${currentPath.startsWith("/creator") ? "text-amber-400" : "text-gray-700 dark:text-gray-300"}">
-                        <i class="fa-solid fa-feather-pointed mr-1.5"></i> Nhà sáng tạo
-                    </a>
-                    ` : ""}
-                    ${isAdmin ? html`
-                    <a href="/admin" class="transition-colors hover:text-amber-400 ${currentPath.startsWith("/admin") ? "text-amber-400" : "text-gray-700 dark:text-gray-300"}">
-                        <i class="fa-solid fa-user-shield mr-1.5"></i> Admin
-                    </a>
-                    ` : ""}
-                    ${user ? html`
-                    <a href="/notifications" class="transition-colors hover:text-amber-400 ${currentPath === "/notifications" ? "text-amber-400" : "text-gray-700 dark:text-gray-300"} relative">
-                        <i class="fa-solid fa-bell mr-1.5"></i> Thông báo
-                        ${unreadNotifsCount > 0 ? html`<span class="absolute -top-1.5 -right-2 bg-red-500 text-white font-extrabold text-[9px] w-4 h-4 rounded-full flex items-center justify-center animate-pulse">${unreadNotifsCount}</span>` : ""}
-                    </a>
-                    ` : ""}
                 </nav>
             </div>
 
@@ -205,13 +189,29 @@ export function layout(title: string, content: any, user: db.User | null, curren
                     </button>
                     
                     <!-- Dropdown menu -->
-                    <div id="user-dropdown-menu" class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-[#161925] border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg py-1 z-50 origin-top-right">
+                    <div id="user-dropdown-menu" class="hidden absolute right-0 mt-2 w-56 bg-white dark:bg-[#161925] border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg py-1 z-50 origin-top-right">
                         <a href="/profile/${user.username}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-amber-500 transition-colors">
                             <i class="fa-regular fa-user mr-2 w-4 text-center"></i> Trang cá nhân
                         </a>
                         <a href="/settings" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-amber-500 transition-colors">
                             <i class="fa-solid fa-gear mr-2 w-4 text-center"></i> Cài đặt
                         </a>
+                        ${user && user.is_creator ? html`
+                        <a href="/creator" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-amber-500 transition-colors">
+                            <i class="fa-solid fa-feather-pointed mr-2 w-4 text-center"></i> Nhà sáng tạo
+                        </a>
+                        ` : ""}
+                        ${isAdmin ? html`
+                        <a href="/admin" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-amber-500 transition-colors">
+                            <i class="fa-solid fa-user-shield mr-2 w-4 text-center"></i> Admin
+                        </a>
+                        ` : ""}
+                        ${user ? html`
+                        <a href="/notifications" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-amber-500 transition-colors">
+                            <i class="fa-solid fa-bell mr-2 w-4 text-center"></i> Thông báo
+                            ${unreadNotifsCount > 0 ? html`<span class="ml-2 inline-flex items-center justify-center bg-red-500 text-white font-bold text-xs px-2 py-0.5 rounded-full">${unreadNotifsCount}</span>` : ""}
+                        </a>
+                        ` : ""}
                         <div class="border-t border-gray-200 dark:border-gray-700 my-1"></div>
                         <button onclick="logout()" class="w-full text-left block px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
                             <i class="fa-solid fa-right-from-bracket mr-2 w-4 text-center"></i> Đăng xuất

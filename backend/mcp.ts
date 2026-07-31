@@ -281,7 +281,7 @@ export const MCP_TOOLS = [
   },
   {
     name: "delete_user",
-    description: "Xóa người dùng khỏi hệ thống (không áp dụng với Owner).",
+    description: "Xóa người dùng khỏi hệ thống (owner trong biến môi trường có thể xóa các owner khác, trừ chính mình).",
     inputSchema: {
       type: "object",
       properties: {
@@ -352,6 +352,14 @@ const SENSITIVE_TOOLS = [
   "delete_comment"
 ];
 
+// Tools that create new content — require the "Nhà sáng tạo" (creator) permission
+// (admins and the owner always bypass this check)
+const CREATOR_TOOLS = [
+  "create_storybook_info",
+  "create_storyverse",
+  "create_character"
+];
+
 // --- Helpers for list tools (pagination, filtering, password hashing) ---
 async function sha256(message: string): Promise<string> {
   const msgBuffer = new TextEncoder().encode(message);
@@ -391,6 +399,11 @@ export async function executeMcpTool(name: string, args: any, user: db.User): Pr
   if (SENSITIVE_TOOLS.includes(name)) {
     if (!user.is_admin && !user.is_owner) {
       return { success: false, error: "Forbidden: This tool requires owner or admin privileges." };
+    }
+  }
+  if (CREATOR_TOOLS.includes(name)) {
+    if (!user.is_creator && !user.is_admin && !user.is_owner) {
+      return { success: false, error: "Forbidden: This tool requires the 'Nhà sáng tạo' (creator) permission. Enable it in your settings." };
     }
   }
   try {
@@ -610,7 +623,7 @@ export async function executeMcpTool(name: string, args: any, user: db.User): Pr
 
       case "edit_user_role": {
         const { username, is_admin } = args;
-        const success = await db.updateUserRole(username, is_admin);
+        const success = await db.updateUserRole(user.username, username, is_admin);
         return { success, message: success ? "User role updated" : "Failed to update user role" };
       }
 
@@ -642,7 +655,7 @@ export async function executeMcpTool(name: string, args: any, user: db.User): Pr
 
       case "delete_user": {
         const { username } = args;
-        const success = await db.deleteUser(username);
+        const success = await db.deleteUser(user.username, username);
         return { success, message: success ? "User deleted" : "Failed to delete user" };
       }
 
