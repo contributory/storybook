@@ -8,7 +8,7 @@ await db.initDb();
 await ensureOwnerAccount();
 
 // 3. Start Hono Deno web server
-console.log("Starting StoryWeave Hono app on Deno...");
+console.log("Starting Storybook Hono app on Deno...");
 
 // Boot server locally if run directly
 if (import.meta.main) {

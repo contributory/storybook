@@ -4,7 +4,7 @@ import * as db from "../db.ts";
 
 
 // General HTML Layout Wrapper
-export function layout(title: string, content: any, user: db.User | null, currentPath = "/") {
+export function layout(title: string, content: any, user: db.User | null, currentPath = "/", unreadNotifsCount = 0) {
   const isAdmin = user ? (user.is_admin || user.is_owner) : false;
 
   return html`<!DOCTYPE html>
@@ -12,7 +12,7 @@ export function layout(title: string, content: any, user: db.User | null, curren
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${title} | StoryWeave</title>
+    <title>${title} | Storybook</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -123,7 +123,7 @@ export function layout(title: string, content: any, user: db.User | null, curren
                     <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-yellow-400 flex items-center justify-center text-black font-bold text-xl shadow-lg shadow-yellow-500/10 group-hover:scale-105 transition-transform">
                         S
                     </div>
-                    <span class="text-xl font-bold tracking-wider bg-gradient-to-r from-white via-gray-200 to-amber-400 bg-clip-text text-transparent">StoryWeave</span>
+                    <span class="text-xl font-bold tracking-wider bg-gradient-to-r from-white via-gray-200 to-amber-400 bg-clip-text text-transparent">Storybook</span>
                 </a>
 
                 <!-- Navigation Links -->
@@ -131,10 +131,13 @@ export function layout(title: string, content: any, user: db.User | null, curren
                     <a href="/" class="transition-colors hover:text-amber-400 ${currentPath === "/" ? "text-amber-400" : "text-gray-700 dark:text-gray-300"}">
                         <i class="fa-solid fa-house mr-1.5"></i> Trang chủ
                     </a>
+                    <a href="/storybooks" class="transition-colors hover:text-amber-400 ${currentPath.startsWith("/storybooks") ? "text-amber-400" : "text-gray-700 dark:text-gray-300"}">
+                        <i class="fa-solid fa-book mr-1.5"></i> Bộ truyện
+                    </a>
                     <a href="/storyverses" class="transition-colors hover:text-amber-400 ${currentPath.startsWith("/storyverses") ? "text-amber-400" : "text-gray-700 dark:text-gray-300"}">
                         <i class="fa-solid fa-earth-asia mr-1.5"></i> Vũ trụ truyện
                     </a>
-                    ${user ? html`
+                    ${user && user.is_creator ? html`
                     <a href="/creator" class="transition-colors hover:text-amber-400 ${currentPath.startsWith("/creator") ? "text-amber-400" : "text-gray-700 dark:text-gray-300"}">
                         <i class="fa-solid fa-feather-pointed mr-1.5"></i> Nhà sáng tạo
                     </a>
@@ -142,6 +145,12 @@ export function layout(title: string, content: any, user: db.User | null, curren
                     ${isAdmin ? html`
                     <a href="/admin" class="transition-colors hover:text-amber-400 ${currentPath.startsWith("/admin") ? "text-amber-400" : "text-gray-700 dark:text-gray-300"}">
                         <i class="fa-solid fa-user-shield mr-1.5"></i> Admin
+                    </a>
+                    ` : ""}
+                    ${user ? html`
+                    <a href="/notifications" class="transition-colors hover:text-amber-400 ${currentPath === "/notifications" ? "text-amber-400" : "text-gray-700 dark:text-gray-300"} relative">
+                        <i class="fa-solid fa-bell mr-1.5"></i> Thông báo
+                        ${unreadNotifsCount > 0 ? html`<span class="absolute -top-1.5 -right-2 bg-red-500 text-white font-extrabold text-[9px] w-4 h-4 rounded-full flex items-center justify-center animate-pulse">${unreadNotifsCount}</span>` : ""}
                     </a>
                     ` : ""}
                 </nav>
@@ -154,13 +163,18 @@ export function layout(title: string, content: any, user: db.User | null, curren
                 </button>
                 ${user ? html`
                 <div class="flex items-center space-x-3">
-                    <div class="hidden sm:flex flex-col items-end text-right">
-                        <span class="text-sm font-semibold text-gray-800 dark:text-gray-200">${user.display_name}</span>
-                        <span class="text-xs text-amber-500 font-medium">@${user.username} ${user.is_owner ? "(Owner)" : user.is_admin ? "(Admin)" : ""}</span>
-                    </div>
-                    <div class="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 flex items-center justify-center text-amber-400 font-bold uppercase ring-2 ring-amber-500/20">
-                        ${user.display_name.charAt(0)}
-                    </div>
+                    <a href="/profile/${user.username}" class="flex items-center space-x-3 group">
+                        <div class="hidden sm:flex flex-col items-end text-right">
+                            <span class="text-sm font-semibold text-gray-800 dark:text-gray-200 group-hover:text-amber-400 transition-colors">${user.display_name}</span>
+                            <span class="text-xs text-amber-500 font-medium">@${user.username} ${user.is_owner ? "(Owner)" : user.is_admin ? "(Admin)" : ""}</span>
+                        </div>
+                        <div class="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 flex items-center justify-center text-amber-400 font-bold uppercase ring-2 ring-amber-500/20 group-hover:scale-105 transition-transform">
+                            ${user.display_name.charAt(0)}
+                        </div>
+                    </a>
+                    <a href="/settings" class="p-2 text-gray-600 dark:text-gray-400 hover:text-amber-500 transition-colors" title="Cài đặt cá nhân">
+                        <i class="fa-solid fa-gear text-lg"></i>
+                    </a>
                     <button onclick="logout()" class="p-2 text-gray-600 dark:text-gray-400 hover:text-red-400 transition-colors" title="Đăng xuất">
                         <i class="fa-solid fa-right-from-bracket text-lg"></i>
                     </button>
@@ -184,12 +198,11 @@ export function layout(title: string, content: any, user: db.User | null, curren
     <footer class="border-t border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-[#0c0e16] py-8 text-center text-sm text-gray-500 dark:text-gray-500 mt-12">
         <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0">
             <div class="flex items-center space-x-2">
-                <span class="font-semibold text-gray-600 dark:text-gray-400">StoryWeave</span>
+                <span class="font-semibold text-gray-600 dark:text-gray-400">Storybook</span>
                 <span>&copy; ${new Date().getFullYear()} - Nền tảng kể chuyện cộng tác hỗ trợ AI</span>
             </div>
             <div class="flex space-x-6">
                 <a href="/mcp/sse" class="hover:text-amber-400 transition-colors" target="_blank"><i class="fa-solid fa-network-wired mr-1.5"></i> MCP Server</a>
-                <a href="https://val.town" class="hover:text-amber-400 transition-colors" target="_blank"><i class="fa-solid fa-code mr-1.5"></i> View Source</a>
             </div>
         </div>
     </footer>

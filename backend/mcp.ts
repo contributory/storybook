@@ -14,7 +14,8 @@ export const MCP_TOOLS = [
         description: { type: "string", description: "Mô tả ngắn" },
         categories: { type: "string", description: "Thể loại (cách nhau bởi dấu phẩy, ví dụ: 'Tiên Hiệp, Huyền Huyễn')" },
         allow_other_author_edit: { type: "boolean", description: "Cho phép tác giả khác chỉnh sửa nội dung" },
-        storyverse_id: { type: "string", description: "ID của vũ trụ cốt truyện (tùy chọn)" }
+        storyverse_id: { type: "string", description: "ID của vũ trụ cốt truyện (tùy chọn)" },
+        characters: { type: "string", description: "Danh sách các nhân vật chính dưới dạng mảng JSON string, mỗi phần tử chứa {id: 'optional-shared-id', name: 'Tên', role: 'Vai trò', description: 'Mô tả'}. Ví dụ: '[{\"id\":\"ton-ngo-khong\",\"name\":\"Tôn Ngộ Không\",\"role\":\"Nhân vật chính\",\"description\":\"Tề Thiên Đại Thánh\"}]' (tùy chọn)" }
       },
       required: ["id", "title", "description", "categories", "allow_other_author_edit"]
     }
@@ -42,7 +43,7 @@ export const MCP_TOOLS = [
         content: { type: "string", description: "Nội dung chương" },
         summary: { type: "string", description: "Tóm tắt ngắn gọn của chương nhằm giúp AI viết tiếp mà không cần đọc lại toàn bộ" }
       },
-      required: ["storybook_id", "chapter_number", "title", "content", "summary"]
+      required: ["storybook_id", "chapter_number", "title", "content"]
     }
   },
   {
@@ -246,12 +247,27 @@ export const MCP_TOOLS = [
 ];
 
 // Execute MCP Tool
-export async function executeMcpTool(name: string, args: any): Promise<any> {
+const SENSITIVE_TOOLS = [
+  "edit_user_role",
+  "delete_user",
+  "delete_storybook",
+  "delete_chapter",
+  "delete_storyverse",
+  "delete_shared_character",
+  "delete_comment"
+];
+
+export async function executeMcpTool(name: string, args: any, user: db.User): Promise<any> {
+  if (SENSITIVE_TOOLS.includes(name)) {
+    if (!user.is_admin && !user.is_owner) {
+      return { success: false, error: "Forbidden: This tool requires owner or admin privileges." };
+    }
+  }
   try {
     switch (name) {
       case "create_storybook_info": {
-        const { id, title, description, categories, allow_other_author_edit, storyverse_id } = args;
-        const res = await db.createStorybook(id, title, description, "AI Content Generated", categories, allow_other_author_edit, storyverse_id || null);
+        const { id, title, description, categories, allow_other_author_edit, storyverse_id, characters = "[]" } = args;
+        const res = await db.createStorybook(id, title, description, user.ai_author_name || "AI", categories, allow_other_author_edit, storyverse_id || null, "", typeof characters === "string" ? characters : JSON.stringify(characters));
         return { success: true, storybook: res, url: `${BASE_URL}/storybook/${id}` };
       }
 
@@ -263,7 +279,7 @@ export async function executeMcpTool(name: string, args: any): Promise<any> {
       }
 
       case "create_or_edit_chapter": {
-        const { storybook_id, chapter_number, title, content, summary } = args;
+        const { storybook_id, chapter_number, title, content, summary = "" } = args;
         const res = await db.createOrEditChapter(storybook_id, chapter_number, title, content, summary);
         return { success: true, chapter: { ...res, content: "[Hidden Content in output]" }, url: `${BASE_URL}/storybook/${storybook_id}/chapter/${chapter_number}` };
       }
@@ -284,7 +300,7 @@ export async function executeMcpTool(name: string, args: any): Promise<any> {
 
       case "create_storyverse": {
         const { id, title, description } = args;
-        const res = await db.createStoryverse(id, title, description, "AI Content Generated");
+        const res = await db.createStoryverse(id, title, description, user.ai_author_name || "AI");
         return { success: true, storyverse: res, url: `${BASE_URL}/storyverses/${id}` };
       }
 
@@ -296,7 +312,7 @@ export async function executeMcpTool(name: string, args: any): Promise<any> {
 
       case "create_shared_character": {
         const { id, name: charName, other_info, storyverse_id } = args;
-        const res = await db.createSharedCharacter(id, charName, other_info, storyverse_id, "AI Content Generated");
+        const res = await db.createSharedCharacter(id, charName, other_info, storyverse_id, user.ai_author_name || "AI");
         return { success: true, character: res, url: `${BASE_URL}/storyverses/${storyverse_id}` };
       }
 
@@ -416,7 +432,7 @@ export async function executeMcpTool(name: string, args: any): Promise<any> {
 }
 
 // Handler for JSON-RPC (Streamable HTTP)
-export async function handleMcpRequest(body: any): Promise<any> {
+export async function handleMcpRequest(body: any, user: db.User): Promise<any> {
   const { jsonrpc, method, params, id } = body;
 
   if (jsonrpc !== "2.0") {
@@ -463,7 +479,7 @@ export async function handleMcpRequest(body: any): Promise<any> {
       };
     }
 
-    const result = await executeMcpTool(name, args || {});
+    const result = await executeMcpTool(name, args || {}, user);
     const response = {
       jsonrpc: "2.0",
       result: {

@@ -82,6 +82,79 @@ export async function authMiddleware(c: any, next: () => Promise<void>) {
 }
 
 app.use("*", authMiddleware);
+// Helper to render layout with unread notifications count
+export async function renderWithLayout(c: any, title: string, rendered: any, currentPath = "/") {
+  const user = c.get("user");
+  const count = user ? await db.getUnreadNotificationsCount(user.username) : 0;
+  return c.html(ui.layout(title, rendered, user, currentPath, count));
+}
+
+
+// --- S3 PROXY & UPLOAD API ---
+
+app.get("/api/s3-proxy", async c => {
+  const key = c.req.query("key");
+  if (!key) return c.json({ error: "Missing key" }, 400);
+  const obj = await db.getS3Object(key);
+  if (!obj) return c.json({ error: "File not found" }, 404);
+  return c.body(obj.body as any, 200, {
+    "Content-Type": obj.contentType,
+    "Cache-Control": "public, max-age=31536000",
+  });
+});
+
+app.post("/api/upload-thumbnail", async c => {
+  const user = c.get("user");
+  if (!user) return c.json({ success: false, error: "Unauthorized" }, 401);
+
+  try {
+    const body = await c.req.parseBody();
+    const file = body["file"];
+    const type = body["type"] as string;
+    const id = body["id"] as string;
+
+    if (!file || !type || !id) {
+      return c.json({ success: false, error: "Missing file, type or id" }, 400);
+    }
+
+    // Permission checks
+    if (type === "storybook") {
+      const book = await db.getStorybookById(id);
+      if (!book) return c.json({ success: false, error: "Storybook not found" }, 404);
+      const isAuthor = book.authors.toLowerCase().includes(user.username.toLowerCase());
+      const canEdit = isAuthor || user.is_admin || user.is_owner || book.allow_other_author_edit;
+      if (!canEdit) return c.json({ success: false, error: "Forbidden" }, 403);
+    } else if (type === "storyverse") {
+      const sv = await db.getStoryverseById(id);
+      if (!sv) return c.json({ success: false, error: "Storyverse not found" }, 404);
+      const canEdit = sv.author.toLowerCase() === user.username.toLowerCase() || user.is_admin || user.is_owner;
+      if (!canEdit) return c.json({ success: false, error: "Forbidden" }, 403);
+    } else if (type === "character") {
+      const char = await db.getSharedCharacterById(id);
+      if (!char) return c.json({ success: false, error: "Character not found" }, 404);
+      const canEdit = char.author.toLowerCase() === user.username.toLowerCase() || user.is_admin || user.is_owner;
+      if (!canEdit) return c.json({ success: false, error: "Forbidden" }, 403);
+    } else {
+      return c.json({ success: false, error: "Invalid type" }, 400);
+    }
+
+    const url = await db.uploadThumbnail(type, id, file);
+
+    // Save in DB
+    if (type === "storybook") {
+      await db.executeQuery("UPDATE storybooks SET thumbnail_url = ? WHERE id = ?", [url, id]);
+    } else if (type === "storyverse") {
+      await db.executeQuery("UPDATE storyverses SET thumbnail_url = ? WHERE id = ?", [url, id]);
+    } else if (type === "character") {
+      await db.executeQuery("UPDATE shared_characters SET thumbnail_url = ? WHERE id = ?", [url, id]);
+    }
+
+    return c.json({ success: true, url });
+  } catch (err: any) {
+    return c.json({ success: false, error: err.message }, 500);
+  }
+});
+
 
 
 // --- FRONTEND VIEWS ROUTING ---
@@ -91,26 +164,28 @@ app.get("/", async c => {
   const books = await db.getAllStorybooks();
   const progress = user ? await db.getReadingProgress(user.username) : [];
   const rendered = ui.renderHomepage(books, progress, user);
-  const htmlContent = ui.layout("Trang Chủ", rendered, user, "/");
-  return c.html(htmlContent);
+  return await renderWithLayout(c, "Trang Chủ", rendered, "/");
+});
+
+app.get("/storybooks", async c => {
+  const books = await db.getAllStorybooks();
+  const rendered = ui.renderStorybooksPage(books);
+  return await renderWithLayout(c, "Thư Viện Bộ Truyện", rendered, "/storybooks");
 });
 
 app.get("/storyverses", async c => {
-  const user = c.get("user");
   const verses = await db.getAllStoryverses();
   const rendered = ui.renderStoryverses(verses);
-  const htmlContent = ui.layout("Vũ Trụ Truyện", rendered, user, "/storyverses");
-  return c.html(htmlContent);
+  return await renderWithLayout(c, "Vũ Trụ Truyện", rendered, "/storyverses");
 });
 
 app.get("/storyverses/:id", async c => {
-  const user = c.get("user");
   const sv = await db.getStoryverseById(c.req.param("id"));
   if (!sv) return c.redirect("/");
   const chars = await db.getCharactersByStoryverse(sv.id);
-  const rendered = ui.renderStoryverseDetail(sv, chars);
-  const htmlContent = ui.layout(sv.title, rendered, user, `/storyverses`);
-  return c.html(htmlContent);
+  const user = c.get("user");
+  const rendered = ui.renderStoryverseDetail(sv, chars, user);
+  return await renderWithLayout(c, sv.title, rendered, `/storyverses`);
 });
 
 app.get("/storybook/:id", async c => {
@@ -119,8 +194,7 @@ app.get("/storybook/:id", async c => {
   if (!book) return c.redirect("/");
   const chapters = await db.getChaptersList(book.id);
   const rendered = ui.renderStorybookDetail(book, chapters, user);
-  const htmlContent = ui.layout(book.title, rendered, user, `/`);
-  return c.html(htmlContent);
+  return await renderWithLayout(c, book.title, rendered, `/`);
 });
 
 app.get("/storybook/:id/chapter/:num", async c => {
@@ -144,13 +218,15 @@ app.get("/storybook/:id/chapter/:num", async c => {
   const nextNum = curIndex < chaptersList.length - 1 ? chaptersList[curIndex + 1].chapter_number : null;
 
   const rendered = ui.renderChapterReader(book, chapter, nextNum, prevNum);
-  const htmlContent = ui.layout(`Chương ${num}: ${chapter.title} - ${book.title}`, rendered, user, `/`);
-  return c.html(htmlContent);
+  return await renderWithLayout(c, `Chương ${num}: ${chapter.title} - ${book.title}`, rendered, `/`);
 });
 
 app.get("/creator", async c => {
   const user = c.get("user");
   if (!user) return c.redirect("/"); // Require login
+  if (!user.is_creator && !user.is_admin && !user.is_owner) {
+    return c.redirect("/settings"); // Restrict access to /creator if not creator
+  }
 
   const allBooks = await db.getAllStorybooks();
   // Allow creators to see books they auth, or any books that allow edits
@@ -158,8 +234,7 @@ app.get("/creator", async c => {
   const universes = await db.getAllStoryverses();
 
   const rendered = ui.renderCreatorPanel(books, universes, c.req.query("book_id") || "");
-  const htmlContent = ui.layout("Nhà Sáng Tạo", rendered, user, "/creator");
-  return c.html(htmlContent);
+  return await renderWithLayout(c, "Nhà Sáng Tạo", rendered, "/creator");
 });
 
 app.get("/admin", async c => {
@@ -168,10 +243,93 @@ app.get("/admin", async c => {
 
   const users = await db.getAllUsers();
   const rendered = ui.renderAdminPanel(users);
-  const htmlContent = ui.layout("Quản Trị Hệ Thống", rendered, user, "/admin");
-  return c.html(htmlContent);
+  return await renderWithLayout(c, "Quản Trị Hệ Thống", rendered, "/admin");
 });
 
+
+
+// --- PROFILE & SETTINGS ROUTES ---
+
+app.get("/profile", async c => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/");
+  return c.redirect(`/profile/${user.username}`);
+});
+
+app.get("/profile/:username", async c => {
+  const currentUser = c.get("user");
+  const targetUsername = c.req.param("username").toLowerCase();
+
+  const profileUser = await db.getUserByUsername(targetUsername);
+  if (!profileUser) return c.redirect("/");
+
+  const allBooks = await db.getAllStorybooks();
+  const books = allBooks.filter(b => b.authors.toLowerCase().includes(targetUsername));
+
+  const allVerses = await db.getAllStoryverses();
+  const verses = allVerses.filter(v => v.author.toLowerCase() === targetUsername);
+
+  const followers = await db.getFollowers(targetUsername);
+  const following = await db.getFollowing(targetUsername);
+  const isFollowing = currentUser ? followers.includes(currentUser.username) : false;
+
+  const rendered = ui.renderProfilePage(
+    profileUser,
+    currentUser ? currentUser.username === targetUsername : false,
+    books,
+    verses,
+    isFollowing,
+    followers.length,
+    following.length,
+    currentUser
+  );
+
+  return await renderWithLayout(c, `Hồ sơ @${profileUser.username}`, rendered);
+});
+
+app.get("/settings", async c => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/");
+
+  const rendered = ui.renderSettingsPage(user);
+  return await renderWithLayout(c, "Cài đặt cá nhân", rendered, "/settings");
+});
+
+app.post("/api/settings", async c => {
+  const user = c.get("user");
+  if (!user) return c.json({ success: false, error: "Unauthorized" }, 401);
+
+  try {
+    const { display_name, is_creator, ai_author_name } = await c.req.json();
+    if (!display_name) {
+      return c.json({ success: false, error: "Display name is required" }, 400);
+    }
+
+    const success = await db.updateUserSettings(
+      user.username,
+      display_name.trim(),
+      !!is_creator,
+      (ai_author_name || "").trim()
+    );
+
+    return c.json({ success });
+  } catch (err: any) {
+    return c.json({ success: false, error: err.message }, 500);
+  }
+});
+
+app.post("/api/settings/token", async c => {
+  const user = c.get("user");
+  if (!user) return c.json({ success: false, error: "Unauthorized" }, 401);
+
+  try {
+    const rawToken = `sb_tok_${crypto.randomUUID().replace(/-/g, "")}`;
+    const success = await db.updateUserApiToken(user.username, rawToken);
+    return c.json({ success, token: rawToken });
+  } catch (err: any) {
+    return c.json({ success: false, error: err.message }, 500);
+  }
+});
 
 // --- AUTH API ---
 
@@ -279,7 +437,7 @@ app.post("/api/storybooks", async c => {
   if (!user) return c.json({ success: false, error: "Unauthorized" }, 401);
 
   try {
-    const { id, title, description, categories, allow_other_author_edit, storyverse_id } = await c.req.json();
+    const { id, title, description, categories, allow_other_author_edit, storyverse_id, characters } = await c.req.json();
     if (!id || !title || !description || !categories) {
       return c.json({ success: false, error: "Missing required fields" }, 400);
     }
@@ -297,7 +455,9 @@ app.post("/api/storybooks", async c => {
       user.username, // Original author
       categories.trim(),
       !!allow_other_author_edit,
-      storyverse_id || null
+      storyverse_id || null,
+      "",
+      characters !== undefined ? (typeof characters === "string" ? characters : JSON.stringify(characters)) : "[]"
     );
 
     return c.json({ success: true, storybook: book });
@@ -329,14 +489,16 @@ app.put("/api/storybooks/:id", async c => {
   }
 
   try {
-    const { title, description, categories, allow_other_author_edit, storyverse_id } = await c.req.json();
+    const { title, description, categories, allow_other_author_edit, storyverse_id, characters } = await c.req.json();
     const updated = await db.updateStorybook(
       bookId,
       title || book.title,
       description || book.description,
       categories || book.categories,
       allow_other_author_edit !== undefined ? !!allow_other_author_edit : book.allow_other_author_edit,
-      storyverse_id !== undefined ? (storyverse_id || null) : book.storyverse_id
+      storyverse_id !== undefined ? (storyverse_id || null) : book.storyverse_id,
+      undefined,
+      characters !== undefined ? (typeof characters === "string" ? characters : JSON.stringify(characters)) : undefined
     );
 
     // If another author is editing and not in authors list, append their name
@@ -555,6 +717,30 @@ app.post("/api/characters", async c => {
   }
 });
 
+app.put("/api/characters/:id", async c => {
+  const user = c.get("user");
+  if (!user) return c.json({ success: false, error: "Unauthorized" }, 401);
+
+  const charId = c.req.param("id");
+  const character = await db.getSharedCharacterById(charId);
+  if (!character) return c.json({ success: false, error: "Character not found" }, 404);
+
+  const canEdit = character.author.toLowerCase() === user.username.toLowerCase() || user.is_admin || user.is_owner;
+  if (!canEdit) return c.json({ success: false, error: "Forbidden" }, 403);
+
+  try {
+    const { name, other_info } = await c.req.json();
+    const success = await db.updateSharedCharacter(
+      charId,
+      name || character.name,
+      other_info !== undefined ? other_info : character.other_info
+    );
+    return c.json({ success, message: success ? "Character updated" : "Failed to update character" });
+  } catch (err: any) {
+    return c.json({ success: false, error: err.message }, 500);
+  }
+});
+
 app.delete("/api/characters/:id", async c => {
   const user = c.get("user");
   if (!user) return c.json({ success: false, error: "Unauthorized" }, 401);
@@ -592,6 +778,58 @@ app.post("/api/users/:username/follow", async c => {
 
 // --- COMMENTS & LIKES API ---
 
+
+// --- NOTIFICATIONS VIEW & API ---
+
+app.get("/notifications", async c => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/");
+
+  const list = await db.getNotificationsForUser(user.username);
+  const rendered = ui.renderNotificationsPage(list);
+  return await renderWithLayout(c, "Thông báo của bạn", rendered, "/notifications");
+});
+
+app.get("/notifications/:id/click", async c => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/");
+
+  const id = c.req.param("id");
+  await db.markNotificationAsRead(id);
+
+  const res = await db.executeQuery("SELECT target_type, target_id FROM notifications WHERE id = ?", [id]);
+  if (res.rows.length === 0) return c.redirect("/notifications");
+
+  const type = res.rows[0].target_type as string;
+  const targetId = res.rows[0].target_id as string;
+
+  if (type === "storybook") {
+    return c.redirect(`/storybook/${targetId}`);
+  } else if (type === "storyverse") {
+    return c.redirect(`/storyverses/${targetId}`);
+  } else if (type === "character") {
+    const char = await db.getSharedCharacterById(targetId);
+    if (char) {
+      return c.redirect(`/storyverses/${char.storyverse_id}`);
+    }
+    return c.redirect("/storyverses");
+  }
+
+  return c.redirect("/notifications");
+});
+
+app.post("/api/notifications/read-all", async c => {
+  const user = c.get("user");
+  if (!user) return c.json({ success: false, error: "Unauthorized" }, 401);
+
+  try {
+    await db.executeQuery("UPDATE notifications SET is_read = 1 WHERE username = ?", [user.username.toLowerCase()]);
+    return c.json({ success: true });
+  } catch (err: any) {
+    return c.json({ success: false, error: err.message }, 500);
+  }
+});
+
 app.post("/api/comments", async c => {
   const user = c.get("user");
   if (!user) return c.json({ success: false, error: "Unauthorized" }, 401);
@@ -611,6 +849,75 @@ app.post("/api/comments", async c => {
       target_type,
       target_id
     );
+
+    // Create notifications for the relevant author(s)
+    try {
+      if (reply_to) {
+        const parentRes = await db.executeQuery("SELECT author, content FROM comments WHERE id = ?", [reply_to]);
+        if (parentRes.rows.length > 0) {
+          const parentAuthor = parentRes.rows[0].author as string;
+          if (parentAuthor.toLowerCase() !== user.username.toLowerCase()) {
+            await db.createNotification(
+              parentAuthor,
+              user.username,
+              "reply",
+              target_type,
+              target_id,
+              commentId,
+              `đã phản hồi bình luận của bạn: "${content.substring(0, 50)}..."`
+            );
+          }
+        }
+      } else {
+        if (target_type === "storybook") {
+          const book = await db.getStorybookById(target_id);
+          if (book) {
+            const authorsList = book.authors.split(",").map(a => a.trim().toLowerCase());
+            for (const auth of authorsList) {
+              if (auth && auth !== user.username.toLowerCase()) {
+                await db.createNotification(
+                  auth,
+                  user.username,
+                  "comment",
+                  "storybook",
+                  target_id,
+                  commentId,
+                  `đã bình luận về truyện "${book.title}": "${content.substring(0, 50)}..."`
+                );
+              }
+            }
+          }
+        } else if (target_type === "storyverse") {
+          const sv = await db.getStoryverseById(target_id);
+          if (sv && sv.author.toLowerCase() !== user.username.toLowerCase()) {
+            await db.createNotification(
+              sv.author,
+              user.username,
+              "comment",
+              "storyverse",
+              target_id,
+              commentId,
+              `đã bình luận về bối cảnh "${sv.title}": "${content.substring(0, 50)}..."`
+            );
+          }
+        } else if (target_type === "character") {
+          const char = await db.getSharedCharacterById(target_id);
+          if (char && char.author.toLowerCase() !== user.username.toLowerCase()) {
+            await db.createNotification(
+              char.author,
+              user.username,
+              "comment",
+              "character",
+              target_id,
+              commentId,
+              `đã bình luận về nhân vật "${char.name}": "${content.substring(0, 50)}..."`
+            );
+          }
+        }
+      }
+    } catch (notifErr) {
+      console.error("Failed to create notification:", notifErr);
+    }
 
     return c.json({ success: true, comment });
   } catch (err: any) {
@@ -716,13 +1023,49 @@ app.post("/mcp", async c => {
   try {
     const body = await c.req.json();
 
+    // Try to retrieve API Token
+    let token = "";
+    const authHeader = c.req.header("Authorization");
+    if (authHeader && authHeader.toLowerCase().startsWith("bearer ")) {
+      token = authHeader.substring(7).trim();
+    }
+    if (!token) {
+      token = c.req.header("X-API-Token") || "";
+    }
+    if (!token) {
+      token = c.req.query("token") || c.req.query("api_token") || "";
+    }
+    if (!token && body) {
+      const params = Array.isArray(body) ? body[0]?.params : body.params;
+      if (params) {
+        token = params.api_token || params.token || "";
+      }
+    }
+
+    if (!token) {
+      return c.json({
+        jsonrpc: "2.0",
+        error: { code: -32001, message: "Unauthorized: Missing API Token. Please generate an API Token in settings." },
+        id: Array.isArray(body) ? (body[0]?.id || null) : (body?.id || null)
+      }, 401);
+    }
+
+    const mcpUser = await db.getUserByApiToken(token);
+    if (!mcpUser) {
+      return c.json({
+        jsonrpc: "2.0",
+        error: { code: -32001, message: "Unauthorized: Invalid API Token." },
+        id: Array.isArray(body) ? (body[0]?.id || null) : (body?.id || null)
+      }, 401);
+    }
+
     // Handle batch requests (array of JSON-RPC messages)
     if (Array.isArray(body)) {
-      const results = await Promise.all(body.map(req => handleMcpRequest(req)));
+      const results = await Promise.all(body.map(req => handleMcpRequest(req, mcpUser)));
       return c.json(results);
     }
 
-    const result = await handleMcpRequest(body);
+    const result = await handleMcpRequest(body, mcpUser);
 
     // Notifications (no id) return 202 with no body
     if (result === null || result === undefined) {
