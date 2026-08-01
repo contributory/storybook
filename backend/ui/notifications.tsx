@@ -29,7 +29,7 @@ export function renderNotificationsPage(notifsResult: db.PageResult<db.Notificat
                     </div>
                     <div class="flex-grow space-y-1">
                         <p class="text-sm text-gray-800 dark:text-gray-250 leading-relaxed">
-                            <span class="font-bold text-gray-950 dark:text-white">${n.sender_display_name}</span>
+                            <span class="font-bold text-gray-950 dark:text-white">${n.sender_display_name} (@${n.sender})</span>
                             ${n.content}
                         </p>
                         <div class="flex items-center space-x-2 text-[10px] text-gray-500 dark:text-gray-500 font-medium">

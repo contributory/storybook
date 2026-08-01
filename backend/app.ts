@@ -252,8 +252,9 @@ app.get("/creator", async c => {
   // Allow creators to see books they auth, or any books that allow edits
   const books = allBooks.filter(b => b.authors.toLowerCase().includes(user.username.toLowerCase()) || b.allow_other_author_edit);
   const universes = await db.getAllStoryverses();
+  const characters = await db.getAllCharacters();
 
-  const rendered = ui.renderCreatorPanel(books, universes, c.req.query("book_id") || "");
+  const rendered = ui.renderCreatorPanel(books, universes, characters, user, c.req.query("book_id") || "");
   return await renderWithLayout(c, "Nhà Sáng Tạo", rendered, "/creator");
 });
 
@@ -265,16 +266,25 @@ app.get("/create/storybook", async c => {
 
   const editId = (c.req.query("id") || "").trim();
   let book: db.Storybook | null = null;
+  let chapters: Omit<db.Chapter, "content">[] = [];
+  let editChapter: db.Chapter | null = null;
+
   if (editId) {
     book = await db.getStorybookById(editId);
     if (book) {
       const canEdit = book.authors.toLowerCase().includes(user.username.toLowerCase()) || user.is_admin || user.is_owner || book.allow_other_author_edit;
       if (!canEdit) return c.redirect(`/storybook/${book.id}`);
+
+      chapters = await db.getChaptersList(book.id);
+      const chNum = Number(c.req.query("chapter_number"));
+      if (chNum) {
+        editChapter = await db.getChapter(book.id, chNum);
+      }
     }
   }
 
   const universes = await db.getAllStoryverses();
-  const rendered = ui.renderCreateStorybook(universes, book);
+  const rendered = ui.renderCreateStorybook(universes, book, chapters, editChapter);
   return await renderWithLayout(c, book ? "Sửa Bộ Truyện" : "Tạo Bộ Truyện", rendered, "/creator");
 });
 
@@ -326,6 +336,26 @@ app.get("/admin", async c => {
   const users = await db.getUsersPaginated(page, 20);
   const rendered = ui.renderAdminPanel(users, user);
   return await renderWithLayout(c, "Quản Trị Hệ Thống", rendered, "/admin");
+});
+
+app.get("/search", async c => {
+  const user = c.get("user");
+  const q = (c.req.query("q") || "").trim();
+
+  let books: db.Storybook[] = [];
+  let universes: db.Storyverse[] = [];
+  let characters: db.Character[] = [];
+  let users: any[] = [];
+
+  if (q) {
+    books = await db.searchStorybooks(q, 15);
+    universes = await db.searchStoryverses(q, 15);
+    characters = await db.searchCharacters(q, 15);
+    users = await db.searchUsers(q, 15);
+  }
+
+  const rendered = ui.renderSearchResults(q, books, universes, characters, users);
+  return await renderWithLayout(c, `Tìm kiếm: "${q}"`, rendered);
 });
 
 

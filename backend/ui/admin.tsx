@@ -38,8 +38,8 @@ export function renderAdminPanel(usersResult: db.PageResult<db.User>, currentUse
                     <tbody class="divide-y divide-gray-800/60">
                         ${rows.map(({ u, isSelf, canManage }) => html`
                         <tr class="hover:bg-gray-200 dark:bg-gray-800/10 transition-colors">
-                            <td class="py-3.5 px-4 font-semibold text-gray-800 dark:text-gray-200">${u.display_name}</td>
-                            <td class="py-3.5 px-4 text-amber-500">@${u.username}</td>
+                            <td class="py-3.5 px-4 font-semibold text-gray-800 dark:text-gray-200"><a href="/profile/${u.username}" class="hover:underline hover:text-amber-500 transition-colors">${u.display_name}</a></td>
+                            <td class="py-3.5 px-4 text-amber-500"><a href="/profile/${u.username}" class="hover:underline">@${u.username}</a></td>
                             <td class="py-3.5 px-4">
                                 ${u.is_owner ? html`<span class="px-2 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/20 text-[10px] font-bold">Owner</span>` :
                                   u.is_admin ? html`<span class="px-2 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/20 text-[10px] font-bold">Admin</span>` :

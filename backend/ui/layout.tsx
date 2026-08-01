@@ -113,6 +113,43 @@ export function layout(title: string, content: any, user: db.User | null, curren
             applyTheme(next);
         }
 
+        // --- CLIENT-SIDE FETCH CACHING INTERCEPTOR ---
+        if (typeof window !== 'undefined') {
+            const _originalFetch = window.fetch;
+            const apiCache = new Map();
+
+            window.fetch = async function(url, options) {
+                const method = (options && options.method) ? options.method.toUpperCase() : 'GET';
+
+                // Only intercept GET requests for API endpoints
+                const isGetApi = method === 'GET' && (
+                    url.includes('/api/comments') ||
+                    url.includes('/api/likes') ||
+                    url.includes('/api/storybooks') ||
+                    url.includes('/api/storyverses') ||
+                    url.includes('/api/characters')
+                );
+
+                if (isGetApi) {
+                    if (apiCache.has(url)) {
+                        return apiCache.get(url).clone();
+                    }
+                    const response = await _originalFetch(url, options);
+                    if (response.ok) {
+                        apiCache.set(url, response.clone());
+                    }
+                    return response;
+                }
+
+                // If mutation request (POST/PUT/DELETE), clear the cache
+                if (method !== 'GET') {
+                    apiCache.clear();
+                }
+
+                return _originalFetch(url, options);
+            };
+        }
+
         function updateThemeUI(theme) {
             const icon = document.getElementById('theme-toggle-icon');
             const text = document.getElementById('theme-toggle-text');
@@ -169,6 +206,12 @@ export function layout(title: string, content: any, user: db.User | null, curren
                         <i class="fa-solid fa-users mr-1.5"></i> Nhân vật
                     </a>
                 </nav>
+
+                <!-- Unified Search Bar -->
+                <form action="/search" method="GET" class="hidden lg:flex items-center relative max-w-xs flex-grow mx-4">
+                    <input type="text" name="q" placeholder="Tìm truyện, tác giả, nhân vật..." required class="w-full bg-gray-100 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white rounded-xl pl-10 pr-4 py-1.5 text-xs focus:outline-none focus:border-amber-500 transition-colors">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 text-gray-500 text-xs"></i>
+                </form>
             </div>
 
             <!-- User Auth Profile -->
@@ -230,6 +273,11 @@ export function layout(title: string, content: any, user: db.User | null, curren
 
     <!-- Mobile Navigation Menu (Hidden by default) -->
     <div id="mobile-menu" class="hidden md:hidden border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-[#161925] px-4 py-2 space-y-1">
+        <!-- Mobile Search Form -->
+        <form action="/search" method="GET" class="flex items-center relative py-2">
+            <input type="text" name="q" placeholder="Tìm kiếm..." required class="w-full bg-gray-50 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:border-amber-500 transition-colors">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 text-gray-500 text-xs"></i>
+        </form>
         <a href="/" class="block px-3 py-2 rounded-md text-base font-medium ${currentPath === "/" ? "bg-gray-100 dark:bg-gray-800 text-amber-500" : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50"}">
             <i class="fa-solid fa-house w-6 text-center"></i> Trang chủ
         </a>

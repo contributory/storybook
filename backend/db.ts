@@ -683,22 +683,43 @@ export async function getStoryverseById(id: string): Promise<Storyverse | null> 
 }
 
 async function storyversesFromRows(rows: any[]): Promise<Storyverse[]> {
-  const list: Storyverse[] = [];
-  for (const row of rows) {
-    const commentsCount = await getCommentsCount("storyverse", row.id as string);
-    const likesCount = await getLikesCount("storyverse", row.id as string);
-    list.push({
-      id: row.id as string,
+  if (rows.length === 0) return [];
+  const ids = rows.map(r => r.id as string);
+  const placeholders = ids.map(() => "?").join(",");
+
+  // Batch comments counts
+  const commentsMap = new Map<string, number>();
+  const commRes = await dbClient.execute({
+    sql: `SELECT target_id, COUNT(*) as count FROM comments WHERE target_type = 'storyverse' AND target_id IN (${placeholders}) GROUP BY target_id`,
+    args: ids,
+  });
+  for (const r of commRes.rows) {
+    commentsMap.set(r.target_id as string, Number(r.count));
+  }
+
+  // Batch likes counts
+  const likesMap = new Map<string, number>();
+  const likesRes = await dbClient.execute({
+    sql: `SELECT target_id, COUNT(*) as count FROM likes WHERE target_type = 'storyverse' AND target_id IN (${placeholders}) GROUP BY target_id`,
+    args: ids,
+  });
+  for (const r of likesRes.rows) {
+    likesMap.set(r.target_id as string, Number(r.count));
+  }
+
+  return rows.map(row => {
+    const verseId = row.id as string;
+    return {
+      id: verseId,
       title: row.title as string,
       description: row.description as string,
       author: row.author as string,
       created_at: row.created_at as string,
-      comments_count: commentsCount,
-      likes_count: likesCount,
+      comments_count: commentsMap.get(verseId) || 0,
+      likes_count: likesMap.get(verseId) || 0,
       thumbnail_url: (row.thumbnail_url as string) || "",
-    });
-  }
-  return list;
+    };
+  });
 }
 
 export async function getAllStoryverses(): Promise<Storyverse[]> {
@@ -877,17 +898,44 @@ export async function getStorybookById(id: string): Promise<Storybook | null> {
 }
 
 async function storybooksFromRows(rows: any[]): Promise<Storybook[]> {
-  const list: Storybook[] = [];
-  for (const row of rows) {
-    const chRes = await dbClient.execute({
-      sql: `SELECT COUNT(*) as count FROM chapters WHERE storybook_id = ?`,
-      args: [row.id as string],
-    });
-    const chaptersCount = Number(chRes.rows[0].count);
-    const commentsCount = await getCommentsCount("storybook", row.id as string);
-    const likesCount = await getLikesCount("storybook", row.id as string);
-    list.push({
-      id: row.id as string,
+  if (rows.length === 0) return [];
+  const ids = rows.map(r => r.id as string);
+  const placeholders = ids.map(() => "?").join(",");
+
+  // Batch chapters counts
+  const chaptersMap = new Map<string, number>();
+  const chRes = await dbClient.execute({
+    sql: `SELECT storybook_id, COUNT(*) as count FROM chapters WHERE storybook_id IN (${placeholders}) GROUP BY storybook_id`,
+    args: ids,
+  });
+  for (const r of chRes.rows) {
+    chaptersMap.set(r.storybook_id as string, Number(r.count));
+  }
+
+  // Batch comments counts
+  const commentsMap = new Map<string, number>();
+  const commRes = await dbClient.execute({
+    sql: `SELECT target_id, COUNT(*) as count FROM comments WHERE target_type = 'storybook' AND target_id IN (${placeholders}) GROUP BY target_id`,
+    args: ids,
+  });
+  for (const r of commRes.rows) {
+    commentsMap.set(r.target_id as string, Number(r.count));
+  }
+
+  // Batch likes counts
+  const likesMap = new Map<string, number>();
+  const likesRes = await dbClient.execute({
+    sql: `SELECT target_id, COUNT(*) as count FROM likes WHERE target_type = 'storybook' AND target_id IN (${placeholders}) GROUP BY target_id`,
+    args: ids,
+  });
+  for (const r of likesRes.rows) {
+    likesMap.set(r.target_id as string, Number(r.count));
+  }
+
+  return rows.map(row => {
+    const bookId = row.id as string;
+    return {
+      id: bookId,
       title: row.title as string,
       description: row.description as string,
       authors: row.authors as string,
@@ -895,15 +943,14 @@ async function storybooksFromRows(rows: any[]): Promise<Storybook[]> {
       created_at: row.created_at as string,
       allow_other_author_edit: row.allow_other_author_edit === 1,
       storyverse_id: row.storyverse_id as string | null,
-      chapters_count: chaptersCount,
-      comments_count: commentsCount,
-      likes_count: likesCount,
+      chapters_count: chaptersMap.get(bookId) || 0,
+      comments_count: commentsMap.get(bookId) || 0,
+      likes_count: likesMap.get(bookId) || 0,
       thumbnail_url: (row.thumbnail_url as string) || "",
       characters: (row.characters as string) || "[]",
       ost: (row.ost as string) || "[]",
-    });
-  }
-  return list;
+    };
+  });
 }
 
 export async function getAllStorybooks(): Promise<Storybook[]> {
@@ -1069,23 +1116,44 @@ export async function getCharactersByStoryverse(storyverse_id: string): Promise<
 }
 
 async function charactersFromRows(rows: any[]): Promise<Character[]> {
-  const list: Character[] = [];
-  for (const row of rows) {
-    const commentsCount = await getCommentsCount("character", row.id as string);
-    const likesCount = await getLikesCount("character", row.id as string);
-    list.push({
-      id: row.id as string,
+  if (rows.length === 0) return [];
+  const ids = rows.map(r => r.id as string);
+  const placeholders = ids.map(() => "?").join(",");
+
+  // Batch comments counts
+  const commentsMap = new Map<string, number>();
+  const commRes = await dbClient.execute({
+    sql: `SELECT target_id, COUNT(*) as count FROM comments WHERE target_type = 'character' AND target_id IN (${placeholders}) GROUP BY target_id`,
+    args: ids,
+  });
+  for (const r of commRes.rows) {
+    commentsMap.set(r.target_id as string, Number(r.count));
+  }
+
+  // Batch likes counts
+  const likesMap = new Map<string, number>();
+  const likesRes = await dbClient.execute({
+    sql: `SELECT target_id, COUNT(*) as count FROM likes WHERE target_type = 'character' AND target_id IN (${placeholders}) GROUP BY target_id`,
+    args: ids,
+  });
+  for (const r of likesRes.rows) {
+    likesMap.set(r.target_id as string, Number(r.count));
+  }
+
+  return rows.map(row => {
+    const charId = row.id as string;
+    return {
+      id: charId,
       name: row.name as string,
       description: row.description as string,
       storyverse_id: row.storyverse_id as string,
       author: row.author as string,
       created_at: row.created_at as string,
-      comments_count: commentsCount,
-      likes_count: likesCount,
+      comments_count: commentsMap.get(charId) || 0,
+      likes_count: likesMap.get(charId) || 0,
       thumbnail_url: (row.thumbnail_url as string) || "",
-    });
-  }
-  return list;
+    };
+  });
 }
 
 export async function getAllCharacters(): Promise<Character[]> {
