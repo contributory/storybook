@@ -12,3 +12,4 @@ export { renderCharactersPage } from "./ui/characters.tsx";
 export { renderCreateStorybook } from "./ui/create_storybook.tsx";
 export { renderCreateStoryverse } from "./ui/create_storyverse.tsx";
 export { renderCreateCharacter } from "./ui/create_character.tsx";
+export { renderSearchResults } from "./ui/search.tsx";

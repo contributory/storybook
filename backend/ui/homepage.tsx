@@ -91,7 +91,7 @@ export function renderHomepage(booksResult: db.PageResult<db.Storybook>, progres
                     </div>
 
                     <div class="pt-4 border-t border-gray-200 dark:border-gray-800/80 flex items-center justify-between text-xs text-gray-600 dark:text-gray-400 relative z-10">
-                        <span class="font-medium text-gray-700 dark:text-gray-300"><i class="fa-solid fa-pen-nib mr-1.5 text-amber-500/80"></i>${b.authors.split(",")[0]}</span>
+                        <span class="font-medium text-gray-700 dark:text-gray-300"><i class="fa-solid fa-pen-nib mr-1.5 text-amber-500/80"></i>${b.authors.split(",").map((auth, idx) => html`<a href="/profile/${auth.trim()}" class="hover:underline text-amber-500 font-semibold">@${auth.trim()}</a>${idx < b.authors.split(",").length - 1 ? ", " : ""}`)}</span>
                         <div class="flex items-center space-x-3">
                             <span><i class="fa-solid fa-book-open mr-1"></i> ${b.chapters_count || 0} ch</span>
                             <button onclick="toggleLike('storybook', '${b.id}', this)" class="hover:text-red-400 transition-colors flex items-center space-x-1">

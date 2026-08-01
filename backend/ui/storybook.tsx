@@ -2,6 +2,13 @@
 import { html } from "npm:hono/html";
 import * as db from "../db.ts";
 
+export function renderAuthorsList(authorsStr: string) {
+  const authors = authorsStr.split(",").map(a => a.trim()).filter(Boolean);
+  return html`${authors.map((author, index) => html`
+    <a href="/profile/${author}" class="font-semibold text-amber-500 hover:underline">@${author}</a>${index < authors.length - 1 ? ", " : ""}
+  `)}`;
+}
+
 import { renderCommentsArea } from "./comments.tsx";
 import { renderMarkdown } from "./markdown.ts";
 
@@ -57,7 +64,7 @@ export function renderStorybookDetail(book: db.Storybook, chapters: Omit<db.Chap
 
                 <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white leading-tight mb-2">${book.title}</h1>
                 <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                    Bởi: <span class="font-medium text-gray-700 dark:text-gray-300">${book.authors}</span> &bull; Phát hành: ${new Date(book.created_at).toLocaleDateString("vi-VN")}
+                    Bởi: <span class="font-medium text-gray-700 dark:text-gray-300">${renderAuthorsList(book.authors)}</span> &bull; Phát hành: ${new Date(book.created_at).toLocaleDateString("vi-VN")}
                 </p>
 
                 <div class="md text-sm leading-relaxed">${renderMarkdown(book.description)}</div>
@@ -93,6 +100,7 @@ export function renderStorybookDetail(book: db.Storybook, chapters: Omit<db.Chap
                     ${chapters.map(ch => {
                       const isAuth = user && book.authors.toLowerCase().includes(user.username.toLowerCase());
                       const canDelCh = isAuth || (user && (user.is_admin || user.is_owner));
+                      const canEditCh = isAuth || (user && (user.is_admin || user.is_owner)) || (user && book.allow_other_author_edit);
                       return html`
                     <div class="flex items-center justify-between p-4 bg-white dark:bg-[#161925]/40 border border-gray-200 dark:border-gray-800 hover:border-amber-500/40 rounded-xl hover:bg-gray-100 dark:bg-[#1a1e2e]/30 transition-all group">
                         <a href="/storybook/${book.id}/chapter/${ch.chapter_number}" class="flex-grow text-left space-y-1">
@@ -100,6 +108,11 @@ export function renderStorybookDetail(book: db.Storybook, chapters: Omit<db.Chap
                             <p class="text-xs text-gray-600 dark:text-gray-400 line-clamp-1 italic">Tóm tắt: ${ch.summary || "Chưa có tóm tắt"}</p>
                         </a>
                         <div class="flex items-center space-x-3 ml-4">
+                            ${canEditCh ? html`
+                            <a href="/create/storybook?id=${book.id}&chapter_number=${ch.chapter_number}" class="p-2 text-gray-500 hover:text-amber-500 transition-colors" title="Sửa chương này">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </a>
+                            ` : ""}
                             ${canDelCh ? html`
                             <button onclick="deleteChapter(event, '${book.id}', ${ch.chapter_number})" class="p-2 text-gray-500 hover:text-red-400 transition-colors" title="Xóa chương này">
                                 <i class="fa-solid fa-trash-can"></i>
@@ -245,8 +258,103 @@ export function renderChapterReader(book: db.Storybook, chapter: db.Chapter, nex
         <div class="text-center space-y-3 pt-4">
             <span class="text-xs uppercase tracking-widest font-semibold text-amber-500">Chương ${chapter.chapter_number}</span>
             <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white leading-tight font-serif">${chapter.title}</h1>
-            <p class="text-xs text-gray-500 dark:text-gray-500">Người viết: ${book.authors} &bull; Cập nhật: ${new Date(chapter.created_at).toLocaleDateString("vi-VN")}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-500">Người viết: ${renderAuthorsList(book.authors)} &bull; Cập nhật: ${new Date(chapter.created_at).toLocaleDateString("vi-VN")}</p>
+
+            <!-- TTS Reader Controls -->
+            <div class="inline-flex items-center space-x-2 bg-white dark:bg-[#161925] border border-gray-200 dark:border-gray-800 px-4 py-2 rounded-2xl shadow-sm mt-3">
+                <button onclick="toggleTTS()" id="btn-tts-toggle" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-black font-bold text-xs rounded-xl flex items-center space-x-1.5 transition-colors">
+                    <i class="fa-solid fa-play"></i>
+                    <span id="tts-toggle-text">Đọc Chương (TTS)</span>
+                </button>
+                <button onclick="stopTTS()" id="btn-tts-stop" class="px-3 py-1.5 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-semibold text-xs rounded-xl flex items-center space-x-1.5 transition-colors hidden">
+                    <i class="fa-solid fa-square"></i>
+                    <span>Dừng</span>
+                </button>
+            </div>
         </div>
+
+        <script>
+            let ttsUtterance = null;
+            let ttsPlaying = false;
+            let ttsPaused = false;
+
+            function toggleTTS() {
+                const toggleBtn = document.getElementById('btn-tts-toggle');
+                const toggleText = document.getElementById('tts-toggle-text');
+                const stopBtn = document.getElementById('btn-tts-stop');
+                const icon = toggleBtn.querySelector('i');
+
+                if (!('speechSynthesis' in window)) {
+                    alert('Trình duyệt của bạn không hỗ trợ Text-to-Speech.');
+                    return;
+                }
+
+                if (!ttsUtterance) {
+                    // Extract clean text directly from the rendered HTML using innerText, bypassing markdown markers
+                    const contentText = document.getElementById('readerContent').innerText.trim();
+                    if (!contentText) {
+                        alert('Chương này không có nội dung để đọc.');
+                        return;
+                    }
+
+                    ttsUtterance = new SpeechSynthesisUtterance(contentText);
+                    ttsUtterance.lang = 'vi-VN';
+
+                    ttsUtterance.onend = () => {
+                        resetTTSUI();
+                    };
+
+                    ttsUtterance.onerror = () => {
+                        resetTTSUI();
+                    };
+
+                    window.speechSynthesis.speak(ttsUtterance);
+                    ttsPlaying = true;
+                    ttsPaused = false;
+
+                    // Update UI to show Playing State
+                    icon.className = 'fa-solid fa-pause';
+                    toggleText.innerText = 'Tạm dừng đọc';
+                    stopBtn.classList.remove('hidden');
+                } else {
+                    if (ttsPaused) {
+                        window.speechSynthesis.resume();
+                        ttsPaused = false;
+                        ttsPlaying = true;
+                        icon.className = 'fa-solid fa-pause';
+                        toggleText.innerText = 'Tạm dừng đọc';
+                    } else if (ttsPlaying) {
+                        window.speechSynthesis.pause();
+                        ttsPaused = true;
+                        ttsPlaying = false;
+                        icon.className = 'fa-solid fa-play';
+                        toggleText.innerText = 'Tiếp tục đọc';
+                    }
+                }
+            }
+
+            function stopTTS() {
+                if ('speechSynthesis' in window) {
+                    window.speechSynthesis.cancel();
+                }
+                resetTTSUI();
+            }
+
+            function resetTTSUI() {
+                ttsUtterance = null;
+                ttsPlaying = false;
+                ttsPaused = false;
+
+                const toggleBtn = document.getElementById('btn-tts-toggle');
+                const toggleText = document.getElementById('tts-toggle-text');
+                const stopBtn = document.getElementById('btn-tts-stop');
+                const icon = toggleBtn.querySelector('i');
+
+                if (icon) icon.className = 'fa-solid fa-play';
+                if (toggleText) toggleText.innerText = 'Đọc Chương (TTS)';
+                if (stopBtn) stopBtn.classList.add('hidden');
+            }
+        </script>
 
 
 

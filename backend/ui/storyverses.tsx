@@ -108,10 +108,18 @@ export function renderStoryverseDetail(sv: db.Storyverse, characters: db.Charact
                 ${sv.storybook_list && sv.storybook_list.length > 0 ? html`
                 <div class="space-y-3">
                     ${sv.storybook_list.map(b => html`
-                    <a href="/storybook/${b.id}" class="block p-4 bg-white dark:bg-[#161925]/40 border border-gray-200 dark:border-gray-800 hover:border-amber-500/40 rounded-xl hover:bg-gray-100 dark:bg-[#1a1e2e]/30 transition-all">
-                        <h4 class="font-bold text-gray-800 dark:text-gray-200">${b.title}</h4>
-                        <span class="text-xs text-gray-600 dark:text-gray-400 block mt-1">Tác giả: ${b.authors}</span>
-                    </a>
+                    <div class="block p-4 bg-white dark:bg-[#161925]/40 border border-gray-200 dark:border-gray-800 rounded-xl hover:bg-gray-100 dark:bg-[#1a1e2e]/30 transition-all">
+                        <h4 class="font-bold text-gray-850 dark:text-gray-200 hover:text-amber-400 transition-colors">
+                            <a href="/storybook/${b.id}">${b.title}</a>
+                        </h4>
+                        <span class="text-xs text-gray-600 dark:text-gray-400 block mt-1">
+                            Tác giả:
+                            ${b.authors.split(",").map((auth, idx) => {
+                                const a = auth.trim();
+                                return html`<a href="/profile/${a}" class="hover:underline text-amber-500 font-semibold">@${a}</a>${idx < b.authors.split(",").length - 1 ? ", " : ""}`;
+                            })}
+                        </span>
+                    </div>
                     `)}
                 </div>
                 ` : html`<p class="text-sm text-gray-500 dark:text-gray-500 italic">Chưa có truyện nào thuộc vũ trụ này.</p>`}
