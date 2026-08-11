@@ -1153,24 +1153,8 @@ app.post("/mcp", async c => {
   try {
     const body = await c.req.json();
 
-    // Try to retrieve API Token
-    let token = "";
-    const authHeader = c.req.header("Authorization");
-    if (authHeader && authHeader.toLowerCase().startsWith("bearer ")) {
-      token = authHeader.substring(7).trim();
-    }
-    if (!token) {
-      token = c.req.header("X-API-Token") || "";
-    }
-    if (!token) {
-      token = c.req.query("token") || c.req.query("api_token") || "";
-    }
-    if (!token && body) {
-      const params = Array.isArray(body) ? body[0]?.params : body.params;
-      if (params) {
-        token = params.api_token || params.token || "";
-      }
-    }
+    // Retrieve API Token from URL query params only
+    let token = c.req.query("api_key") || "";
 
     if (!token) {
       return c.json({
