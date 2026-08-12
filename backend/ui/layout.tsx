@@ -34,6 +34,8 @@ export function layout(title: string, content: any, user: db.User | null, curren
     <style>
         body {
             font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
         .reader-font {
             font-family: 'Lora', 'Merriweather', 'Georgia', serif;
@@ -45,6 +47,32 @@ export function layout(title: string, content: any, user: db.User | null, curren
         .no-scrollbar {
             -ms-overflow-style: none;
             scrollbar-width: none;
+        }
+        /* Smooth transitions for theme switching */
+        * {
+            transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+        }
+        /* Card hover effects with GPU acceleration */
+        .book-card, .chapter-card {
+            will-change: transform;
+            backface-visibility: hidden;
+        }
+        .book-card:hover, .chapter-card:hover {
+            transform: translateY(-4px);
+        }
+        /* Loading skeleton animation */
+        @keyframes shimmer {
+            0% { background-position: -1000px 0; }
+            100% { background-position: 1000px 0; }
+        }
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 1000px 100%;
+            animation: shimmer 2s infinite;
+        }
+        .dark .skeleton {
+            background: linear-gradient(90deg, #1f2937 25%, #374151 50%, #1f2937 75%);
+            background-size: 1000px 100%;
         }
         /* Markdown rendered content */
         .md h1, .md h2, .md h3, .md h4, .md h5, .md h6 { font-weight: 800; line-height: 1.3; margin: 1.2em 0 0.5em; color: inherit; }
@@ -69,6 +97,41 @@ export function layout(title: string, content: any, user: db.User | null, curren
         .md hr { border: 0; border-top: 1px solid rgba(107,114,128,.3); margin: 1.5em 0; }
         .md > :first-child { margin-top: 0; }
         .md > :last-child { margin-bottom: 0; }
+        /* Button and interactive element improvements */
+        button, a {
+            -webkit-tap-highlight-color: transparent;
+        }
+        /* Improved focus states for accessibility */
+        button:focus-visible, a:focus-visible, input:focus-visible {
+            outline: 2px solid #f59e0b;
+            outline-offset: 2px;
+        }
+        /* Gradient text effect for branding */
+        .gradient-text {
+            background: linear-gradient(135deg, #f59e0b, #fbbf24, #f59e0b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            background-size: 200% 200%;
+            animation: gradient-shift 3s ease infinite;
+        }
+        @keyframes gradient-shift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+        /* Glass morphism effect for header */
+        .glass-effect {
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        /* Pulse animation for notifications */
+        @keyframes pulse-red {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+        .notification-badge {
+            animation: pulse-red 2s infinite;
+        }
     </style>
     <script>
         function getTheme() {
@@ -117,6 +180,7 @@ export function layout(title: string, content: any, user: db.User | null, curren
         if (typeof window !== 'undefined') {
             const _originalFetch = window.fetch;
             const apiCache = new Map();
+            const CACHE_TTL = 60000; // 1 minute TTL for cache entries
 
             window.fetch = async function(url, options) {
                 const method = (options && options.method) ? options.method.toUpperCase() : 'GET';
@@ -131,12 +195,16 @@ export function layout(title: string, content: any, user: db.User | null, curren
                 );
 
                 if (isGetApi) {
-                    if (apiCache.has(url)) {
-                        return apiCache.get(url).clone();
+                    const cached = apiCache.get(url);
+                    if (cached && Date.now() < cached.expiry) {
+                        return cached.response.clone();
                     }
                     const response = await _originalFetch(url, options);
                     if (response.ok) {
-                        apiCache.set(url, response.clone());
+                        apiCache.set(url, {
+                            response: response.clone(),
+                            expiry: Date.now() + CACHE_TTL
+                        });
                     }
                     return response;
                 }
@@ -175,48 +243,52 @@ export function layout(title: string, content: any, user: db.User | null, curren
 <body class="bg-gray-50 dark:bg-[#0f111a] text-gray-900 dark:text-gray-100 min-h-screen flex flex-col selection:bg-yellow-500 selection:text-black">
 
     <!-- Header / Navbar -->
-    <header class="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-[#161925]/90 backdrop-blur sticky top-0 z-50 transition-all duration-300">
+    <header class="border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-[#161925]/80 glass-effect sticky top-0 z-50 transition-all duration-300">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <div class="flex items-center space-x-4 md:space-x-8">
                 <!-- Mobile Menu Button -->
-                <button onclick="toggleMobileMenu()" class="md:hidden p-2 -ml-2 text-gray-600 dark:text-gray-400 hover:text-amber-500 transition-colors focus:outline-none">
+                <button onclick="toggleMobileMenu()" class="md:hidden p-2 -ml-2 text-gray-600 dark:text-gray-400 hover:text-amber-500 transition-colors focus:outline-none active:scale-95 transform">
                     <i class="fa-solid fa-bars text-xl"></i>
                 </button>
 
                 <!-- Logo -->
                 <a href="/" class="flex items-center space-x-2 group">
-                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-yellow-400 flex items-center justify-center text-black font-bold text-xl shadow-lg shadow-yellow-500/10 group-hover:scale-105 transition-transform">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-yellow-400 flex items-center justify-center text-black font-bold text-xl shadow-lg shadow-yellow-500/20 group-hover:scale-105 group-hover:shadow-yellow-500/30 transition-all duration-300">
                         S
                     </div>
-                    <span class="text-xl font-bold tracking-wider bg-gradient-to-r from-white via-gray-200 to-amber-400 bg-clip-text text-transparent">Storybook</span>
+                    <span class="text-xl font-bold tracking-wider gradient-text">Storybook</span>
                 </a>
 
                 <!-- Navigation Links -->
                 <nav class="hidden md:flex items-center space-x-6 text-sm font-medium">
-                    <a href="/" class="transition-colors hover:text-amber-400 ${currentPath === "/" ? "text-amber-400" : "text-gray-700 dark:text-gray-300"}">
+                    <a href="/" class="relative px-2 py-1 transition-colors hover:text-amber-400 ${currentPath === "/" ? "text-amber-400" : "text-gray-700 dark:text-gray-300"} group">
                         <i class="fa-solid fa-house mr-1.5"></i> Trang chủ
+                        <span class="absolute bottom-0 left-0 w-0 h-0.5 bg-amber-400 transition-all duration-300 group-hover:w-full ${currentPath === "/" ? "w-full" : ""}"></span>
                     </a>
-                    <a href="/storybooks" class="transition-colors hover:text-amber-400 ${currentPath.startsWith("/storybooks") ? "text-amber-400" : "text-gray-700 dark:text-gray-300"}">
+                    <a href="/storybooks" class="relative px-2 py-1 transition-colors hover:text-amber-400 ${currentPath.startsWith("/storybooks") ? "text-amber-400" : "text-gray-700 dark:text-gray-300"} group">
                         <i class="fa-solid fa-book mr-1.5"></i> Bộ truyện
+                        <span class="absolute bottom-0 left-0 w-0 h-0.5 bg-amber-400 transition-all duration-300 group-hover:w-full ${currentPath.startsWith("/storybooks") ? "w-full" : ""}"></span>
                     </a>
-                    <a href="/storyverses" class="transition-colors hover:text-amber-400 ${currentPath.startsWith("/storyverses") ? "text-amber-400" : "text-gray-700 dark:text-gray-300"}">
+                    <a href="/storyverses" class="relative px-2 py-1 transition-colors hover:text-amber-400 ${currentPath.startsWith("/storyverses") ? "text-amber-400" : "text-gray-700 dark:text-gray-300"} group">
                         <i class="fa-solid fa-earth-asia mr-1.5"></i> Vũ trụ truyện
+                        <span class="absolute bottom-0 left-0 w-0 h-0.5 bg-amber-400 transition-all duration-300 group-hover:w-full ${currentPath.startsWith("/storyverses") ? "w-full" : ""}"></span>
                     </a>
-                    <a href="/characters" class="transition-colors hover:text-amber-400 ${currentPath.startsWith("/characters") ? "text-amber-400" : "text-gray-700 dark:text-gray-300"}">
+                    <a href="/characters" class="relative px-2 py-1 transition-colors hover:text-amber-400 ${currentPath.startsWith("/characters") ? "text-amber-400" : "text-gray-700 dark:text-gray-300"} group">
                         <i class="fa-solid fa-users mr-1.5"></i> Nhân vật
+                        <span class="absolute bottom-0 left-0 w-0 h-0.5 bg-amber-400 transition-all duration-300 group-hover:w-full ${currentPath.startsWith("/characters") ? "w-full" : ""}"></span>
                     </a>
                 </nav>
 
                 <!-- Unified Search Bar -->
-                <form action="/search" method="GET" class="hidden lg:flex items-center relative max-w-xs flex-grow mx-4">
-                    <input type="text" name="q" placeholder="Tìm truyện, tác giả, nhân vật..." required class="w-full bg-gray-100 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white rounded-xl pl-10 pr-4 py-1.5 text-xs focus:outline-none focus:border-amber-500 transition-colors">
-                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 text-gray-500 text-xs"></i>
+                <form action="/search" method="GET" class="hidden lg:flex items-center relative max-w-md flex-grow mx-4 group">
+                    <input type="text" name="q" placeholder="Tìm truyện, tác giả, nhân vật..." required class="w-full bg-gray-100/80 dark:bg-[#0f111a]/80 backdrop-blur border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white rounded-xl pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all duration-300 group-hover:bg-gray-100 dark:group-hover:bg-[#0f111a]">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 text-gray-500 text-sm group-focus-within:text-amber-500 transition-colors"></i>
                 </form>
             </div>
 
             <!-- User Auth Profile -->
             <div class="flex items-center space-x-4">
-                <button onclick="setNextTheme()" class="p-2 text-gray-600 dark:text-gray-400 hover:text-amber-500 dark:hover:text-amber-400 transition-colors flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800" title="Chuyển chế độ giao diện">
+                <button onclick="setNextTheme()" class="p-2 text-gray-600 dark:text-gray-400 hover:text-amber-500 dark:hover:text-amber-400 transition-all duration-300 flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 active:scale-90 transform" title="Chuyển chế độ giao diện">
                     <i id="theme-toggle-icon" class="fa-solid fa-desktop"></i>
                 </button>
                 ${user ? html`
@@ -226,45 +298,45 @@ export function layout(title: string, content: any, user: db.User | null, curren
                             <span class="text-sm font-semibold text-gray-800 dark:text-gray-200 group-hover:text-amber-400 transition-colors">${user.display_name}</span>
                             <span class="text-xs text-amber-500 font-medium">@${user.username} ${user.is_owner ? "(Owner)" : user.is_admin ? "(Admin)" : ""}</span>
                         </div>
-                        <div class="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 flex items-center justify-center text-amber-400 font-bold uppercase ring-2 ring-amber-500/20 group-hover:scale-105 transition-transform cursor-pointer">
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-yellow-400 border-2 border-transparent flex items-center justify-center text-black font-bold uppercase shadow-lg shadow-yellow-500/20 group-hover:shadow-yellow-500/40 group-hover:scale-105 group-hover:border-amber-300 transition-all duration-300 cursor-pointer">
                             ${user.display_name.charAt(0)}
                         </div>
                     </button>
                     
                     <!-- Dropdown menu -->
                     <div id="user-dropdown-menu" class="hidden absolute right-0 mt-2 w-56 bg-white dark:bg-[#161925] border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg py-1 z-50 origin-top-right">
-                        <a href="/profile/${user.username}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-amber-500 transition-colors">
-                            <i class="fa-regular fa-user mr-2 w-4 text-center"></i> Trang cá nhân
+                        <a href="/profile/${user.username}" class="group flex items-center px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-amber-500/10 hover:to-yellow-400/10 hover:text-amber-500 transition-all duration-200">
+                            <i class="fa-regular fa-user mr-3 w-4 text-center group-hover:scale-110 transition-transform"></i> Trang cá nhân
                         </a>
-                        <a href="/settings" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-amber-500 transition-colors">
-                            <i class="fa-solid fa-gear mr-2 w-4 text-center"></i> Cài đặt
+                        <a href="/settings" class="group flex items-center px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-amber-500/10 hover:to-yellow-400/10 hover:text-amber-500 transition-all duration-200">
+                            <i class="fa-solid fa-gear mr-3 w-4 text-center group-hover:rotate-90 transition-transform duration-300"></i> Cài đặt
                         </a>
                         ${user && user.is_creator ? html`
-                        <a href="/creator" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-amber-500 transition-colors">
-                            <i class="fa-solid fa-feather-pointed mr-2 w-4 text-center"></i> Nhà sáng tạo
+                        <a href="/creator" class="group flex items-center px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-amber-500/10 hover:to-yellow-400/10 hover:text-amber-500 transition-all duration-200">
+                            <i class="fa-solid fa-feather-pointed mr-3 w-4 text-center group-hover:scale-110 transition-transform"></i> Nhà sáng tạo
                         </a>
                         ` : ""}
                         ${isAdmin ? html`
-                        <a href="/admin" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-amber-500 transition-colors">
-                            <i class="fa-solid fa-user-shield mr-2 w-4 text-center"></i> Admin
+                        <a href="/admin" class="group flex items-center px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-amber-500/10 hover:to-yellow-400/10 hover:text-amber-500 transition-all duration-200">
+                            <i class="fa-solid fa-user-shield mr-3 w-4 text-center group-hover:scale-110 transition-transform"></i> Admin
                         </a>
                         ` : ""}
                         ${user ? html`
-                        <a href="/notifications" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-amber-500 transition-colors">
-                            <i class="fa-solid fa-bell mr-2 w-4 text-center"></i> Thông báo
-                            ${unreadNotifsCount > 0 ? html`<span class="ml-2 inline-flex items-center justify-center bg-red-500 text-white font-bold text-xs px-2 py-0.5 rounded-full">${unreadNotifsCount}</span>` : ""}
+                        <a href="/notifications" class="group flex items-center px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-amber-500/10 hover:to-yellow-400/10 hover:text-amber-500 transition-all duration-200 relative">
+                            <i class="fa-solid fa-bell mr-3 w-4 text-center ${unreadNotifsCount > 0 ? "notification-badge" : ""}"></i> Thông báo
+                            ${unreadNotifsCount > 0 ? html`<span class="ml-auto inline-flex items-center justify-center bg-red-500 text-white font-bold text-xs px-2 py-0.5 rounded-full notification-badge">${unreadNotifsCount}</span>` : ""}
                         </a>
                         ` : ""}
                         <div class="border-t border-gray-200 dark:border-gray-700 my-1"></div>
-                        <button onclick="logout()" class="w-full text-left block px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                            <i class="fa-solid fa-right-from-bracket mr-2 w-4 text-center"></i> Đăng xuất
+                        <button onclick="logout()" class="w-full group flex items-center px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-all duration-200">
+                            <i class="fa-solid fa-right-from-bracket mr-3 w-4 text-center group-hover:translate-x-1 transition-transform"></i> Đăng xuất
                         </button>
                     </div>
                 </div>
                 ` : html`
                 <div class="flex items-center space-x-3">
-                    <button onclick="openAuthModal('login')" class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:text-white transition-colors">Đăng nhập</button>
-                    <button onclick="openAuthModal('register')" class="px-4 py-2 text-sm font-semibold text-black bg-gradient-to-r from-amber-500 to-yellow-400 rounded-lg hover:brightness-110 transition-all shadow-lg shadow-yellow-500/10">Đăng ký</button>
+                    <button onclick="openAuthModal('login')" class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-amber-500 transition-colors active:scale-95 transform">Đăng nhập</button>
+                    <button onclick="openAuthModal('register')" class="px-5 py-2.5 text-sm font-semibold text-black bg-gradient-to-r from-amber-500 to-yellow-400 rounded-xl hover:brightness-110 hover:shadow-lg hover:shadow-yellow-500/25 active:scale-95 transform transition-all duration-300">Đăng ký</button>
                 </div>
                 `}
             </div>
@@ -272,38 +344,38 @@ export function layout(title: string, content: any, user: db.User | null, curren
     </header>
 
     <!-- Mobile Navigation Menu (Hidden by default) -->
-    <div id="mobile-menu" class="hidden md:hidden border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-[#161925] px-4 py-2 space-y-1">
+    <div id="mobile-menu" class="hidden md:hidden border-b border-gray-200 dark:border-gray-800 bg-white/95 dark:bg-[#161925]/95 backdrop-blur px-4 py-3 space-y-2">
         <!-- Mobile Search Form -->
-        <form action="/search" method="GET" class="flex items-center relative py-2">
-            <input type="text" name="q" placeholder="Tìm kiếm..." required class="w-full bg-gray-50 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:border-amber-500 transition-colors">
-            <i class="fa-solid fa-magnifying-glass absolute left-3 text-gray-500 text-xs"></i>
+        <form action="/search" method="GET" class="flex items-center relative pb-2">
+            <input type="text" name="q" placeholder="Tìm kiếm..." required class="w-full bg-gray-50 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all duration-300">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 text-gray-500 text-sm"></i>
         </form>
-        <a href="/" class="block px-3 py-2 rounded-md text-base font-medium ${currentPath === "/" ? "bg-gray-100 dark:bg-gray-800 text-amber-500" : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50"}">
-            <i class="fa-solid fa-house w-6 text-center"></i> Trang chủ
+        <a href="/" class="group flex items-center px-3 py-2.5 rounded-xl text-base font-medium ${currentPath === "/" ? "bg-gradient-to-r from-amber-500/10 to-yellow-400/10 text-amber-500 border border-amber-500/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60"} transition-all duration-200">
+            <i class="fa-solid fa-house w-6 text-center group-hover:scale-110 transition-transform"></i> <span class="ml-3">Trang chủ</span>
         </a>
-        <a href="/storybooks" class="block px-3 py-2 rounded-md text-base font-medium ${currentPath.startsWith("/storybooks") ? "bg-gray-100 dark:bg-gray-800 text-amber-500" : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50"}">
-            <i class="fa-solid fa-book w-6 text-center"></i> Bộ truyện
+        <a href="/storybooks" class="group flex items-center px-3 py-2.5 rounded-xl text-base font-medium ${currentPath.startsWith("/storybooks") ? "bg-gradient-to-r from-amber-500/10 to-yellow-400/10 text-amber-500 border border-amber-500/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60"} transition-all duration-200">
+            <i class="fa-solid fa-book w-6 text-center group-hover:scale-110 transition-transform"></i> <span class="ml-3">Bộ truyện</span>
         </a>
-        <a href="/storyverses" class="block px-3 py-2 rounded-md text-base font-medium ${currentPath.startsWith("/storyverses") ? "bg-gray-100 dark:bg-gray-800 text-amber-500" : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50"}">
-            <i class="fa-solid fa-earth-asia w-6 text-center"></i> Vũ trụ truyện
+        <a href="/storyverses" class="group flex items-center px-3 py-2.5 rounded-xl text-base font-medium ${currentPath.startsWith("/storyverses") ? "bg-gradient-to-r from-amber-500/10 to-yellow-400/10 text-amber-500 border border-amber-500/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60"} transition-all duration-200">
+            <i class="fa-solid fa-earth-asia w-6 text-center group-hover:scale-110 transition-transform"></i> <span class="ml-3">Vũ trụ truyện</span>
         </a>
-        <a href="/characters" class="block px-3 py-2 rounded-md text-base font-medium ${currentPath.startsWith("/characters") ? "bg-gray-100 dark:bg-gray-800 text-amber-500" : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50"}">
-            <i class="fa-solid fa-users w-6 text-center"></i> Nhân vật
+        <a href="/characters" class="group flex items-center px-3 py-2.5 rounded-xl text-base font-medium ${currentPath.startsWith("/characters") ? "bg-gradient-to-r from-amber-500/10 to-yellow-400/10 text-amber-500 border border-amber-500/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60"} transition-all duration-200">
+            <i class="fa-solid fa-users w-6 text-center group-hover:scale-110 transition-transform"></i> <span class="ml-3">Nhân vật</span>
         </a>
         ${user && user.is_creator ? html`
-        <a href="/creator" class="block px-3 py-2 rounded-md text-base font-medium ${currentPath.startsWith("/creator") ? "bg-gray-100 dark:bg-gray-800 text-amber-500" : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50"}">
-            <i class="fa-solid fa-feather-pointed w-6 text-center"></i> Nhà sáng tạo
+        <a href="/creator" class="group flex items-center px-3 py-2.5 rounded-xl text-base font-medium ${currentPath.startsWith("/creator") ? "bg-gradient-to-r from-amber-500/10 to-yellow-400/10 text-amber-500 border border-amber-500/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60"} transition-all duration-200">
+            <i class="fa-solid fa-feather-pointed w-6 text-center group-hover:scale-110 transition-transform"></i> <span class="ml-3">Nhà sáng tạo</span>
         </a>
         ` : ""}
         ${isAdmin ? html`
-        <a href="/admin" class="block px-3 py-2 rounded-md text-base font-medium ${currentPath.startsWith("/admin") ? "bg-gray-100 dark:bg-gray-800 text-amber-500" : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50"}">
-            <i class="fa-solid fa-user-shield w-6 text-center"></i> Admin
+        <a href="/admin" class="group flex items-center px-3 py-2.5 rounded-xl text-base font-medium ${currentPath.startsWith("/admin") ? "bg-gradient-to-r from-amber-500/10 to-yellow-400/10 text-amber-500 border border-amber-500/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60"} transition-all duration-200">
+            <i class="fa-solid fa-user-shield w-6 text-center group-hover:scale-110 transition-transform"></i> <span class="ml-3">Admin</span>
         </a>
         ` : ""}
         ${user ? html`
-        <a href="/notifications" class="block px-3 py-2 rounded-md text-base font-medium ${currentPath === "/notifications" ? "bg-gray-100 dark:bg-gray-800 text-amber-500" : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50"}">
-            <i class="fa-solid fa-bell w-6 text-center"></i> Thông báo
-            ${unreadNotifsCount > 0 ? html`<span class="ml-2 inline-flex items-center justify-center bg-red-500 text-white font-bold text-xs px-2 py-0.5 rounded-full">${unreadNotifsCount}</span>` : ""}
+        <a href="/notifications" class="group flex items-center px-3 py-2.5 rounded-xl text-base font-medium ${currentPath === "/notifications" ? "bg-gradient-to-r from-amber-500/10 to-yellow-400/10 text-amber-500 border border-amber-500/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60"} transition-all duration-200 relative">
+            <i class="fa-solid fa-bell w-6 text-center ${unreadNotifsCount > 0 ? "notification-badge" : ""}"></i> <span class="ml-3">Thông báo</span>
+            ${unreadNotifsCount > 0 ? html`<span class="ml-auto inline-flex items-center justify-center bg-red-500 text-white font-bold text-xs px-2 py-0.5 rounded-full notification-badge">${unreadNotifsCount}</span>` : ""}
         </a>
         ` : ""}
     </div>

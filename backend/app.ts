@@ -105,7 +105,7 @@ app.get("/api/s3-proxy", async c => {
   if (!obj) return c.json({ error: "File not found" }, 404);
   return c.body(obj.body as any, 200, {
     "Content-Type": obj.contentType,
-    "Cache-Control": "public, max-age=31536000",
+    "Cache-Control": "public, max-age=31536000, immutable",
   });
 });
 
@@ -545,7 +545,9 @@ app.get("/api/auth/me", async c => {
 
 app.get("/api/storybooks", async c => {
   const books = await db.getAllStorybooks();
-  return c.json({ success: true, storybooks: books });
+  return c.json({ success: true, storybooks: books }, 200, {
+    "Cache-Control": "public, max-age=60"
+  });
 });
 
 app.post("/api/storybooks", async c => {
@@ -589,7 +591,9 @@ app.post("/api/storybooks", async c => {
 app.get("/api/storybooks/:id", async c => {
   const book = await db.getStorybookById(c.req.param("id"));
   if (!book) return c.json({ success: false, error: "Storybook not found" }, 404);
-  return c.json({ success: true, storybook: book });
+  return c.json({ success: true, storybook: book }, 200, {
+    "Cache-Control": "public, max-age=60"
+  });
 });
 
 app.put("/api/storybooks/:id", async c => {
@@ -656,7 +660,9 @@ app.delete("/api/storybooks/:id", async c => {
 
 app.get("/api/storybooks/:id/chapters", async c => {
   const list = await db.getChaptersList(c.req.param("id"));
-  return c.json({ success: true, chapters: list });
+  return c.json({ success: true, chapters: list }, 200, {
+    "Cache-Control": "public, max-age=60"
+  });
 });
 
 app.get("/api/storybooks/:id/chapters/:num", async c => {
@@ -672,7 +678,9 @@ app.get("/api/storybooks/:id/chapters/:num", async c => {
     await db.saveReadingProgress(user.username, bookId, num);
   }
 
-  return c.json({ success: true, chapter });
+  return c.json({ success: true, chapter }, 200, {
+    "Cache-Control": "public, max-age=60"
+  });
 });
 
 app.post("/api/storybooks/:id/chapters", async c => {
@@ -732,7 +740,9 @@ app.delete("/api/storybooks/:id/chapters/:num", async c => {
 
 app.get("/api/storyverses", async c => {
   const universes = await db.getAllStoryverses();
-  return c.json({ success: true, storyverses: universes });
+  return c.json({ success: true, storyverses: universes }, 200, {
+    "Cache-Control": "public, max-age=60"
+  });
 });
 
 app.post("/api/storyverses", async c => {
@@ -767,7 +777,9 @@ app.get("/api/storyverses/:id", async c => {
   // Fetch shared characters in this storyverse
   const characters = await db.getCharactersByStoryverse(universe.id);
 
-  return c.json({ success: true, storyverse: universe, characters });
+  return c.json({ success: true, storyverse: universe, characters }, 200, {
+    "Cache-Control": "public, max-age=60"
+  });
 });
 
 app.put("/api/storyverses/:id", async c => {
@@ -811,7 +823,9 @@ app.delete("/api/storyverses/:id", async c => {
 app.get("/api/characters/:id", async c => {
   const char = await db.getCharacterById(c.req.param("id"));
   if (!char) return c.json({ success: false, error: "Character not found" }, 404);
-  return c.json({ success: true, character: char });
+  return c.json({ success: true, character: char }, 200, {
+    "Cache-Control": "public, max-age=60"
+  });
 });
 
 app.post("/api/characters", async c => {
@@ -1059,7 +1073,9 @@ app.get("/api/comments/:type/:id", async c => {
   const type = c.req.param("type") as "storybook" | "storyverse" | "character";
   const id = c.req.param("id");
   const comments = await db.getCommentsForTarget(type, id);
-  return c.json({ success: true, comments });
+  return c.json({ success: true, comments }, 200, {
+    "Cache-Control": "public, max-age=30"
+  });
 });
 
 app.post("/api/likes", async c => {
@@ -1089,7 +1105,9 @@ app.get("/api/likes/:type/:id", async c => {
   const count = await db.getLikesCount(type, id);
   const liked = user ? await db.isLikedByUser(user.username, type, id) : false;
 
-  return c.json({ success: true, count, liked });
+  return c.json({ success: true, count, liked }, 200, {
+    "Cache-Control": "public, max-age=30"
+  });
 });
 
 
@@ -1153,24 +1171,8 @@ app.post("/mcp", async c => {
   try {
     const body = await c.req.json();
 
-    // Try to retrieve API Token
-    let token = "";
-    const authHeader = c.req.header("Authorization");
-    if (authHeader && authHeader.toLowerCase().startsWith("bearer ")) {
-      token = authHeader.substring(7).trim();
-    }
-    if (!token) {
-      token = c.req.header("X-API-Token") || "";
-    }
-    if (!token) {
-      token = c.req.query("token") || c.req.query("api_token") || "";
-    }
-    if (!token && body) {
-      const params = Array.isArray(body) ? body[0]?.params : body.params;
-      if (params) {
-        token = params.api_token || params.token || "";
-      }
-    }
+    // Retrieve API Token from URL query params only
+    let token = c.req.query("api_key") || "";
 
     if (!token) {
       return c.json({
