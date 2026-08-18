@@ -393,7 +393,7 @@ export function layout(title: string, content: any, user: db.User | null, curren
                 <span>&copy; ${new Date().getFullYear()} - Nền tảng kể chuyện cộng tác hỗ trợ AI</span>
             </div>
             <div class="flex space-x-6">
-                <a href="/mcp/sse" class="hover:text-amber-400 transition-colors" target="_blank"><i class="fa-solid fa-network-wired mr-1.5"></i> MCP Server</a>
+                <a href="/mcp" class="hover:text-amber-400 transition-colors" target="_blank"><i class="fa-solid fa-network-wired mr-1.5"></i> MCP Server</a>
             </div>
         </div>
     </footer>

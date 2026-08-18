@@ -1,7 +1,7 @@
 import { Hono } from "npm:hono";
 import { getCookie, setCookie, deleteCookie } from "npm:hono/cookie";
 import * as db from "./db.ts";
-import { handleMcpRequest } from "./mcp.ts";
+import { mcpHttpHandler } from "./mcp.ts";
 import * as ui from "./ui.tsx";
 
 type Variables = {
@@ -1159,26 +1159,21 @@ app.delete("/api/admin/comments/:id", async c => {
 });
 
 
-// --- MCP SERVER INTEGRATION (Streamable HTTP) ---
+// --- MCP SERVER INTEGRATION (Streamable HTTP, stateless) ---
+// Implemented with @modelcontextprotocol/sdk + @hono/mcp (StreamableHTTPTransport).
+// Each request creates a brand-new transport + server bound to the authenticated
+// user, so no session state is kept between calls (stateless mode).
 
-// Streamable HTTP: GET to confirm server capability
-app.get("/mcp", c => {
-  return c.json({ mcp: "streamable-http", version: "2025-03-26" });
-});
-
-// Streamable HTTP: single POST endpoint for all JSON-RPC messages
-app.post("/mcp", async c => {
+app.all("/mcp", async c => {
   try {
-    const body = await c.req.json();
-
     // Retrieve API Token from URL query params only
-    let token = c.req.query("api_key") || "";
+    const token = c.req.query("api_key") || "";
 
     if (!token) {
       return c.json({
         jsonrpc: "2.0",
         error: { code: -32001, message: "Unauthorized: Missing API Token. Please generate an API Token in settings." },
-        id: Array.isArray(body) ? (body[0]?.id || null) : (body?.id || null)
+        id: null
       }, 401);
     }
 
@@ -1187,24 +1182,11 @@ app.post("/mcp", async c => {
       return c.json({
         jsonrpc: "2.0",
         error: { code: -32001, message: "Unauthorized: Invalid API Token." },
-        id: Array.isArray(body) ? (body[0]?.id || null) : (body?.id || null)
+        id: null
       }, 401);
     }
 
-    // Handle batch requests (array of JSON-RPC messages)
-    if (Array.isArray(body)) {
-      const results = await Promise.all(body.map(req => handleMcpRequest(req, mcpUser)));
-      return c.json(results);
-    }
-
-    const result = await handleMcpRequest(body, mcpUser);
-
-    // Notifications (no id) return 202 with no body
-    if (result === null || result === undefined) {
-      return new Response(null, { status: 202 });
-    }
-
-    return c.json(result);
+    return await mcpHttpHandler(c, mcpUser);
   } catch (err: any) {
     return c.json({ jsonrpc: "2.0", error: { code: -32603, message: err.message }, id: null }, 500);
   }
