@@ -1,7 +1,7 @@
 import { assertEquals, assertExists, assertNotEquals, assert } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import * as db from "../backend/db.ts";
-import { executeMcpTool, handleMcpRequest } from "../backend/mcp.ts";
-import app, { sha256 } from "../backend/app.ts";
+import * as db from "../app/db.ts";
+import { executeMcpTool, handleMcpRequest } from "../app/mcp.ts";
+import app, { sha256 } from "../app/app.ts";
 
 // Initialize database schema once before running tests
 Deno.test({
