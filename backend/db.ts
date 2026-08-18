@@ -338,27 +338,27 @@ export async function initDb() {
   console.log("Database schema initialized successfully.");
 }
 
-// --- S3 Helper Methods ---
-async function putToS3(key: string, content: string) {
-  if (!s3Client) return false;
+// --- S3 Helper Methods (Images Only) ---
+async function putImageToS3(key: string, fileBytes: Uint8Array, contentType: string): Promise<string | null> {
+  if (!s3Client) return null;
   try {
     const { PutObjectCommand } = await import("npm:@aws-sdk/client-s3");
     await s3Client.send(
       new PutObjectCommand({
         Bucket: S3_BUCKET,
         Key: key,
-        Body: content,
-        ContentType: "text/plain",
+        Body: fileBytes,
+        ContentType: contentType,
       })
     );
-    return true;
+    return `/api/s3-proxy?key=${encodeURIComponent(key)}`;
   } catch (err) {
-    console.error("Failed to write to S3:", err);
-    return false;
+    console.error("Failed to upload image to S3:", err);
+    return null;
   }
 }
 
-async function getFromS3(key: string): Promise<string | null> {
+async function getImageFromS3(key: string): Promise<{ body: Uint8Array, contentType: string } | null> {
   if (!s3Client) return null;
   try {
     const { GetObjectCommand } = await import("npm:@aws-sdk/client-s3");
@@ -368,27 +368,14 @@ async function getFromS3(key: string): Promise<string | null> {
         Key: key,
       })
     );
-    return await response.Body.transformToString();
+    const body = await response.Body.transformToByteArray();
+    return {
+      body,
+      contentType: response.ContentType || "image/jpeg",
+    };
   } catch (err) {
-    console.error(`Failed to read from S3 (Key: ${key}):`, err);
+    console.error(`Failed to read image from S3 (Key: ${key}):`, err);
     return null;
-  }
-}
-
-async function deleteFromS3(key: string) {
-  if (!s3Client) return false;
-  try {
-    const { DeleteObjectCommand } = await import("npm:@aws-sdk/client-s3");
-    await s3Client.send(
-      new DeleteObjectCommand({
-        Bucket: S3_BUCKET,
-        Key: key,
-      })
-    );
-    return true;
-  } catch (err) {
-    console.error("Failed to delete from S3:", err);
-    return false;
   }
 }
 
@@ -1031,18 +1018,6 @@ export async function searchStorybooks(query: string, limit = 10): Promise<Story
 }
 
 export async function deleteStorybook(id: string): Promise<boolean> {
-  // First clean S3 if chapters exist in S3
-  const chaptersRes = await dbClient.execute({
-    sql: `SELECT chapter_number FROM chapters WHERE storybook_id = ?`,
-    args: [id],
-  });
-  if (useS3) {
-    for (const row of chaptersRes.rows) {
-      const s3Key = `chapters/${id}/${row.chapter_number}.txt`;
-      await deleteFromS3(s3Key);
-    }
-  }
-
   const res = await dbClient.execute({
     sql: `DELETE FROM storybooks WHERE id = ?`,
     args: [id],
@@ -1259,15 +1234,8 @@ export async function createOrEditChapter(
   const created_at = new Date().toISOString();
   const id = `${storybook_id}_${chapter_number}`;
 
-  // If using S3, store content in S3 and keep an empty or shortened string in SQLite
-  let dbContent = content;
-  if (useS3) {
-    const s3Key = `chapters/${storybook_id}/${chapter_number}.txt`;
-    const s3Success = await putToS3(s3Key, content);
-    if (s3Success) {
-      dbContent = "[Stored in S3]";
-    }
-  }
+  // Always store content in database (S3 is only for images)
+  const dbContent = content;
 
   // Check if already exists
   const existRes = await dbClient.execute({
@@ -1298,14 +1266,8 @@ export async function getChapter(storybook_id: string, chapter_number: number): 
   if (res.rows.length === 0) return null;
   const row = res.rows[0];
 
+  // Always get content from database (S3 is only for images)
   let content = row.content as string;
-  if (useS3 && content === "[Stored in S3]") {
-    const s3Key = `chapters/${storybook_id}/${chapter_number}.txt`;
-    const s3Content = await getFromS3(s3Key);
-    if (s3Content !== null) {
-      content = s3Content;
-    }
-  }
 
   return {
     id: row.id as string,
@@ -1334,11 +1296,6 @@ export async function getChaptersList(storybook_id: string): Promise<Omit<Chapte
 }
 
 export async function deleteChapter(storybook_id: string, chapter_number: number): Promise<boolean> {
-  if (useS3) {
-    const s3Key = `chapters/${storybook_id}/${chapter_number}.txt`;
-    await deleteFromS3(s3Key);
-  }
-
   const res = await dbClient.execute({
     sql: `DELETE FROM chapters WHERE storybook_id = ? AND chapter_number = ?`,
     args: [storybook_id, chapter_number],
@@ -1657,19 +1614,14 @@ export async function uploadThumbnail(type: string, id: string, file: any): Prom
   const fileBytes = new Uint8Array(arrayBuffer);
   const contentType = file.type || "image/jpeg";
 
+  // Try to upload to S3 (S3 is only for images)
   if (useS3 && s3Client) {
     try {
-      const { PutObjectCommand } = await import("npm:@aws-sdk/client-s3");
       const key = `thumbnails/${type}/${id}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
-      await s3Client.send(
-        new PutObjectCommand({
-          Bucket: S3_BUCKET,
-          Key: key,
-          Body: fileBytes,
-          ContentType: contentType,
-        })
-      );
-      return `/api/s3-proxy?key=${encodeURIComponent(key)}`;
+      const s3Url = await putImageToS3(key, fileBytes, contentType);
+      if (s3Url) {
+        return s3Url;
+      }
     } catch (err) {
       console.error("Failed to upload thumbnail to S3, falling back to base64:", err);
     }
@@ -1690,22 +1642,5 @@ export async function uploadThumbnail(type: string, id: string, file: any): Prom
 }
 
 export async function getS3Object(key: string): Promise<{ body: Uint8Array, contentType: string } | null> {
-  if (!s3Client) return null;
-  try {
-    const { GetObjectCommand } = await import("npm:@aws-sdk/client-s3");
-    const response = await s3Client.send(
-      new GetObjectCommand({
-        Bucket: S3_BUCKET,
-        Key: key,
-      })
-    );
-    const body = await response.Body.transformToByteArray();
-    return {
-      body,
-      contentType: response.ContentType || "image/jpeg",
-    };
-  } catch (err) {
-    console.error("Failed to fetch from S3:", err);
-    return null;
-  }
+  return await getImageFromS3(key);
 }
