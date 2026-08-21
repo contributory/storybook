@@ -199,44 +199,41 @@ export function renderProfilePage(
   `;
 }
 
+import { t } from "../i18n.ts";
+
 export function renderSettingsPage(user: db.User, currentLang: string = 'vi') {
   return html`
     <div class="max-w-xl mx-auto space-y-8 text-left">
         <div class="space-y-2">
-            <h1 class="text-3xl font-black text-gray-900 dark:text-white"><i class="fa-solid fa-gear mr-2 text-amber-500"></i> Cài Đặt Cá Nhân</h1>
-            <p class="text-gray-600 dark:text-gray-400">Hiệu chỉnh hồ sơ cá nhân, bật tắt quyền sáng tác và quản lý bảo mật API.</p>
+            <h1 class="text-3xl font-black text-gray-900 dark:text-white"><i class="fa-solid fa-gear mr-2 text-amber-500"></i> ${t('settings.title', currentLang)}</h1>
+            <p class="text-gray-600 dark:text-gray-400">${t('settings.description', currentLang)}</p>
         </div>
 
         <!-- Profile update section -->
         <div class="bg-white dark:bg-[#161925]/30 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 sm:p-8 shadow-lg space-y-6">
-            <h3 class="text-lg font-bold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-800 pb-2">Thông tin tài khoản</h3>
+            <h3 class="text-lg font-bold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-800 pb-2">${t('settings.account_info', currentLang)}</h3>
 
             <form onsubmit="handleSaveSettings(event)" class="space-y-5">
                 <div>
-                    <label class="block text-xs font-semibold text-gray-650 dark:text-gray-400 uppercase tracking-wider mb-1.5">Tên hiển thị (Display Name)</label>
+                    <label class="block text-xs font-semibold text-gray-650 dark:text-gray-400 uppercase tracking-wider mb-1.5">${t('settings.display_name', currentLang)}</label>
                     <input type="text" id="settingsDisplayName" required value="${user.display_name}" class="w-full bg-gray-50 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors">
                 </div>
 
                 <!-- Language Selection -->
                 <div>
-                    <label class="block text-xs font-semibold text-gray-650 dark:text-gray-400 uppercase tracking-wider mb-1.5">Ngôn ngữ giao diện</label>
+                    <label class="block text-xs font-semibold text-gray-650 dark:text-gray-400 uppercase tracking-wider mb-1.5">${t('settings.language', currentLang)}</label>
                     <select id="settingsLanguage" class="w-full bg-gray-50 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors">
                         <option value="vi">${'🇻🇳 Tiếng Việt'}</option>
                         <option value="en">${'🇬🇧 English'}</option>
-                        <option value="zh">${'🇨🇳 中文 (Tiếng Trung)'}</option>
-                        <option value="ja">${'🇯🇵 日本語 (Tiếng Nhật)'}</option>
-                        <option value="ko">${'🇰🇷 한국어 (Tiếng Hàn)'}</option>
-                        <option value="th">${'🇹🇭 ไทย (Tiếng Thái)'}</option>
-                        <option value="id">${'🇮🇩 Bahasa Indonesia (Tiếng Indo)'}</option>
                     </select>
-                    <span class="text-[10px] text-gray-500 dark:text-gray-500 mt-1 block">* Chọn ngôn ngữ ưa thích cho giao diện ứng dụng (lưu cục bộ).</span>
+                    <span class="text-[10px] text-gray-500 dark:text-gray-500 mt-1 block">${t('settings.language_desc', currentLang)}</span>
                 </div>
 
                 <!-- Toggle Creator Mode -->
                 <div class="flex items-center justify-between p-3.5 bg-gray-50 dark:bg-[#0f111a] rounded-xl border border-gray-200 dark:border-gray-800/80">
                     <div class="space-y-0.5 pr-4">
-                        <span class="text-sm font-bold text-gray-850 dark:text-gray-200">Kích hoạt quyền "Nhà sáng tạo"</span>
-                        <p class="text-[11px] text-gray-500 dark:text-gray-450 leading-normal">Khi tắt quyền này, mục "Nhà sáng tạo" trên thanh điều hướng sẽ bị ẩn.</p>
+                        <span class="text-sm font-bold text-gray-850 dark:text-gray-200">${t('settings.creator_mode', currentLang)}</span>
+                        <p class="text-[11px] text-gray-500 dark:text-gray-450 leading-normal">${t('settings.creator_mode_desc', currentLang)}</p>
                     </div>
                     <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" id="settingsIsCreator" class="sr-only peer" ${user.is_creator ? "checked" : ""}>
@@ -245,46 +242,46 @@ export function renderSettingsPage(user: db.User, currentLang: string = 'vi') {
                 </div>
 
                 <div>
-                    <label class="block text-xs font-semibold text-gray-650 dark:text-gray-400 uppercase tracking-wider mb-1.5">Tên Tác Giả AI (Mặc định: AI)</label>
-                    <input type="text" id="settingsAiAuthorName" value="${user.ai_author_name || "AI"}" class="w-full bg-gray-50 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors" placeholder="Ví dụ: AI Writer, Claude-3.5...">
-                    <span class="text-[10px] text-gray-500 dark:text-gray-500 mt-1 block">* Tên này hiển thị như tên tác giả của mọi truyện, vũ trụ, nhân vật do AI tạo thông qua cổng MCP.</span>
+                    <label class="block text-xs font-semibold text-gray-650 dark:text-gray-400 uppercase tracking-wider mb-1.5">${t('settings.ai_author_name', currentLang)}</label>
+                    <input type="text" id="settingsAiAuthorName" value="${user.ai_author_name || "AI"}" class="w-full bg-gray-50 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors" placeholder="${t('settings.ai_author_name_desc', currentLang)}">
+                    <span class="text-[10px] text-gray-500 dark:text-gray-500 mt-1 block">${t('settings.ai_author_name_desc', currentLang)}</span>
                 </div>
 
                 <div>
-                    <label class="block text-xs font-semibold text-gray-650 dark:text-gray-400 uppercase tracking-wider mb-1.5">Giới thiệu (Bio)</label>
-                    <textarea id="settingsDes" rows="3" placeholder="Giới thiệu ngắn về bạn... (có thể bỏ trống)" class="w-full bg-gray-50 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors">${user.des || ""}</textarea>
+                    <label class="block text-xs font-semibold text-gray-650 dark:text-gray-400 uppercase tracking-wider mb-1.5">${t('settings.bio', currentLang)}</label>
+                    <textarea id="settingsDes" rows="3" placeholder="${t('settings.bio_placeholder', currentLang)}" class="w-full bg-gray-50 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors">${user.des || ""}</textarea>
                 </div>
 
                 <div>
-                    <label class="block text-xs font-semibold text-gray-650 dark:text-gray-400 uppercase tracking-wider mb-1.5">Ảnh đại diện (Avatar URL)</label>
-                    <input type="text" id="settingsAvatar" value="${user.avatar || ""}" class="w-full bg-gray-50 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors" placeholder="https://... (có thể bỏ trống)">
+                    <label class="block text-xs font-semibold text-gray-650 dark:text-gray-400 uppercase tracking-wider mb-1.5">${t('settings.avatar', currentLang)}</label>
+                    <input type="text" id="settingsAvatar" value="${user.avatar || ""}" class="w-full bg-gray-50 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors" placeholder="${t('settings.avatar_placeholder', currentLang)}">
                 </div>
 
                 <div id="settingsError" class="text-red-400 text-xs hidden"></div>
                 <div id="settingsSuccess" class="text-green-400 text-xs hidden"></div>
 
-                <button type="submit" class="w-full py-3 bg-gradient-to-r from-amber-500 to-yellow-400 text-black font-bold rounded-xl hover:brightness-110 transition-all shadow-lg shadow-yellow-500/10">Lưu thay đổi</button>
+                <button type="submit" class="w-full py-3 bg-gradient-to-r from-amber-500 to-yellow-400 text-black font-bold rounded-xl hover:brightness-110 transition-all shadow-lg shadow-yellow-500/10">${t('settings.save', currentLang)}</button>
             </form>
         </div>
 
         <!-- API TOKEN management -->
         <div class="bg-white dark:bg-[#161925]/30 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 sm:p-8 shadow-lg space-y-6">
-            <h3 class="text-lg font-bold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-800 pb-2">Bảo mật & Cổng MCP API</h3>
-            <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">Để sử dụng Giao thức Model Context Protocol (MCP) hoặc gọi các API nhạy cảm của hệ thống từ AI, bạn bắt buộc phải truyền API Token cá nhân của mình.</p>
+            <h3 class="text-lg font-bold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-800 pb-2">${t('settings.security', currentLang)}</h3>
+            <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">${t('settings.api_desc', currentLang)}</p>
 
             <div class="space-y-4">
                 <div>
-                    <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5">API Token hiện tại</label>
+                    <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5">${t('settings.current_token', currentLang)}</label>
                     <div class="flex gap-2">
-                        <input type="text" id="settingsApiToken" readonly value="${user.api_token || "Chưa tạo API Token"}" class="flex-grow bg-gray-100 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-2.5 text-xs font-mono text-amber-500/90 focus:outline-none">
+                        <input type="text" id="settingsApiToken" readonly value="${user.api_token || t('settings.no_token', currentLang)}" class="flex-grow bg-gray-100 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-2.5 text-xs font-mono text-amber-500/90 focus:outline-none">
                         ${user.api_token ? html`
-                        <button onclick="copyApiToken()" class="px-4 py-2.5 bg-gray-200 dark:bg-gray-800 border border-gray-300 dark:border-gray-750 hover:bg-gray-300 rounded-xl text-xs font-semibold flex items-center justify-center transition-colors">Sao chép</button>
+                        <button onclick="copyApiToken()" class="px-4 py-2.5 bg-gray-200 dark:bg-gray-800 border border-gray-300 dark:border-gray-750 hover:bg-gray-300 rounded-xl text-xs font-semibold flex items-center justify-center transition-colors">${t('settings.copy_token', currentLang)}</button>
                         ` : ""}
                     </div>
                 </div>
 
                 <button onclick="generateNewApiToken()" class="w-full py-2.5 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700/80 border border-gray-300 dark:border-gray-700/60 rounded-xl text-xs font-bold transition-all text-center">
-                    ${user.api_token ? "Tái tạo Token mới (Revoke cũ)" : "Khởi tạo API Token mới"}
+                    ${user.api_token ? t('settings.regenerate_token', currentLang) : t('settings.generate_token', currentLang)}
                 </button>
             </div>
         </div>
@@ -298,25 +295,29 @@ export function renderSettingsPage(user: db.User, currentLang: string = 'vi') {
             const aiAuthorName = document.getElementById('settingsAiAuthorName').value.trim();
             const des = document.getElementById('settingsDes').value.trim();
             const avatar = document.getElementById('settingsAvatar').value.trim();
+            const language = document.getElementById('settingsLanguage').value;
             const errDiv = document.getElementById('settingsError');
             const successDiv = document.getElementById('settingsSuccess');
 
             errDiv.classList.add('hidden');
             successDiv.classList.add('hidden');
 
+            // Save language preference to localStorage
+            localStorage.setItem('preferred_language', language);
+
             try {
                 const res = await fetch('/api/settings', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ display_name: displayName, is_creator: isCreator, ai_author_name: aiAuthorName, des, avatar })
+                    body: JSON.stringify({ display_name: displayName, is_creator: isCreator, ai_author_name: aiAuthorName, des, avatar, language })
                 });
                 const data = await res.json();
                 if (data.success) {
-                    successDiv.innerText = 'Cập nhật cài đặt thành công!';
+                    successDiv.innerText = '${t('settings.success', currentLang)}';
                     successDiv.classList.remove('hidden');
                     setTimeout(() => window.location.reload(), 1000);
                 } else {
-                    errDiv.innerText = data.error || 'Có lỗi xảy ra.';
+                    errDiv.innerText = data.error || '${t('settings.error', currentLang)}';
                     errDiv.classList.remove('hidden');
                 }
             } catch (err) {
@@ -325,7 +326,7 @@ export function renderSettingsPage(user: db.User, currentLang: string = 'vi') {
         }
 
         async function generateNewApiToken() {
-            if (!confirm('Tạo Token mới sẽ dập tắt và làm vô hiệu hóa token cũ ngay lập tức. Xác nhận?')) return;
+            if (!confirm('${t('settings.confirm_revoke', currentLang)}')) return;
             try {
                 const res = await fetch('/api/settings/token', { method: 'POST' });
                 const data = await res.json();
@@ -343,7 +344,7 @@ export function renderSettingsPage(user: db.User, currentLang: string = 'vi') {
             const tokenInput = document.getElementById('settingsApiToken');
             tokenInput.select();
             document.execCommand('copy');
-            alert('Đã sao chép API Token của bạn!');
+            alert('${t('settings.token_copied', currentLang)}');
         }
 
         // Load language preference from localStorage on page load
@@ -351,13 +352,6 @@ export function renderSettingsPage(user: db.User, currentLang: string = 'vi') {
             const savedLang = localStorage.getItem('preferred_language');
             if (savedLang && document.getElementById('settingsLanguage')) {
                 document.getElementById('settingsLanguage').value = savedLang;
-            }
-        });
-
-        // Save language preference to localStorage when changed
-        document.addEventListener('change', function(e) {
-            if (e.target && e.target.id === 'settingsLanguage') {
-                localStorage.setItem('preferred_language', e.target.value);
             }
         });
     </script>

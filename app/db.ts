@@ -324,7 +324,8 @@ export async function initDb() {
     "ALTER TABLE storybooks ADD COLUMN characters TEXT NOT NULL DEFAULT '[]'",
     "ALTER TABLE users ADD COLUMN des TEXT NOT NULL DEFAULT ''",
     "ALTER TABLE users ADD COLUMN avatar TEXT NOT NULL DEFAULT ''",
-    "ALTER TABLE storybooks ADD COLUMN ost TEXT NOT NULL DEFAULT '[]'"
+    "ALTER TABLE storybooks ADD COLUMN ost TEXT NOT NULL DEFAULT '[]'",
+    "ALTER TABLE users ADD COLUMN language TEXT NOT NULL DEFAULT 'vi'"
   ];
 
   for (const sql of migrations) {
@@ -486,11 +487,12 @@ export async function searchUsers(query: string, limit = 10): Promise<any[]> {
 }
 
 
-export async function updateUserSettings(username: string, display_name: string, is_creator: boolean, ai_author_name: string, des?: string, avatar?: string): Promise<boolean> {
+export async function updateUserSettings(username: string, display_name: string, is_creator: boolean, ai_author_name: string, des?: string, avatar?: string, language?: string): Promise<boolean> {
   const sets: string[] = ["display_name = ?", "is_creator = ?", "ai_author_name = ?"];
   const args: any[] = [display_name, is_creator ? 1 : 0, ai_author_name];
   if (des !== undefined) { sets.push("des = ?"); args.push(des); }
   if (avatar !== undefined) { sets.push("avatar = ?"); args.push(avatar); }
+  if (language !== undefined) { sets.push("language = ?"); args.push(language); }
   args.push(username.toLowerCase());
   const res = await dbClient.execute({
     sql: `UPDATE users SET ${sets.join(", ")} WHERE username = ?`,

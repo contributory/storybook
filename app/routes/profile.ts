@@ -2,6 +2,8 @@ import type { AppType } from "../middleware.ts";
 import * as db from "../db.ts";
 import * as ui from "../ui.tsx";
 import { renderWithLayout } from "../middleware.ts";
+import { getCookie, setCookie } from "npm:hono/cookie";
+import { t, SUPPORTED_LANGUAGES, normalizeLanguage } from "../i18n.ts";
 
 export function registerProfileRoutes(app: AppType) {
   // --- PROFILE ROUTES ---
@@ -51,8 +53,10 @@ export function registerProfileRoutes(app: AppType) {
     const user = c.get("user");
     if (!user) return c.redirect("/");
 
-    const rendered = ui.renderSettingsPage(user);
-    return await renderWithLayout(c, "Cài đặt cá nhân", rendered, "/settings");
+    // Get language from user preference or cookie (default to 'vi')
+    const lang = user.language || getCookie(c, "lang") || "vi";
+    const rendered = ui.renderSettingsPage(user, lang);
+    return await renderWithLayout(c, t('settings.title', lang), rendered, "/settings", lang as any);
   });
 
   app.post("/api/settings", async c => {
@@ -60,9 +64,15 @@ export function registerProfileRoutes(app: AppType) {
     if (!user) return c.json({ success: false, error: "Unauthorized" }, 401);
 
     try {
-      const { display_name, is_creator, ai_author_name, des, avatar } = await c.req.json();
+      const { display_name, is_creator, ai_author_name, des, avatar, language } = await c.req.json();
       if (!display_name) {
         return c.json({ success: false, error: "Display name is required" }, 400);
+      }
+
+      // Validate language if provided
+      let validatedLanguage = undefined;
+      if (language && SUPPORTED_LANGUAGES.includes(language)) {
+        validatedLanguage = language;
       }
 
       const success = await db.updateUserSettings(
@@ -71,7 +81,8 @@ export function registerProfileRoutes(app: AppType) {
         !!is_creator,
         (ai_author_name || "").trim(),
         (des || "").trim(),
-        (avatar || "").trim()
+        (avatar || "").trim(),
+        validatedLanguage
       );
 
       return c.json({ success });

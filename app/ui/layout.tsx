@@ -2,6 +2,7 @@
 import { html } from "npm:hono/html";
 import * as db from "../db.ts";
 import type { Language } from "../i18n.ts";
+import { t } from "../i18n.ts";
 
 
 // General HTML Layout Wrapper
@@ -226,13 +227,13 @@ export function layout(title: string, content: any, user: db.User | null, curren
             
             if (theme === 'dark') {
                 icon.className = 'fa-solid fa-moon text-amber-300';
-                if (text) text.innerText = 'Tối';
+                if (text) text.innerText = '${t('theme.dark', lang)}';
             } else if (theme === 'light') {
                 icon.className = 'fa-solid fa-sun text-amber-500';
-                if (text) text.innerText = 'Sáng';
+                if (text) text.innerText = '${t('theme.light', lang)}';
             } else {
                 icon.className = 'fa-solid fa-desktop text-gray-500 dark:text-gray-400';
-                if (text) text.innerText = 'Hệ thống';
+                if (text) text.innerText = '${t('theme.system', lang)}';
             }
         }
         
@@ -263,33 +264,33 @@ export function layout(title: string, content: any, user: db.User | null, curren
                 <!-- Navigation Links -->
                 <nav class="hidden md:flex items-center space-x-6 text-sm font-medium">
                     <a href="/" class="relative px-2 py-1 transition-colors hover:text-amber-400 ${currentPath === "/" ? "text-amber-400" : "text-gray-700 dark:text-gray-300"} group">
-                        <i class="fa-solid fa-house mr-1.5"></i> Trang chủ
+                        <i class="fa-solid fa-house mr-1.5"></i> ${t('nav.home', lang)}
                         <span class="absolute bottom-0 left-0 w-0 h-0.5 bg-amber-400 transition-all duration-300 group-hover:w-full ${currentPath === "/" ? "w-full" : ""}"></span>
                     </a>
                     <a href="/storybooks" class="relative px-2 py-1 transition-colors hover:text-amber-400 ${currentPath.startsWith("/storybooks") ? "text-amber-400" : "text-gray-700 dark:text-gray-300"} group">
-                        <i class="fa-solid fa-book mr-1.5"></i> Bộ truyện
+                        <i class="fa-solid fa-book mr-1.5"></i> ${t('nav.storybooks', lang)}
                         <span class="absolute bottom-0 left-0 w-0 h-0.5 bg-amber-400 transition-all duration-300 group-hover:w-full ${currentPath.startsWith("/storybooks") ? "w-full" : ""}"></span>
                     </a>
                     <a href="/storyverses" class="relative px-2 py-1 transition-colors hover:text-amber-400 ${currentPath.startsWith("/storyverses") ? "text-amber-400" : "text-gray-700 dark:text-gray-300"} group">
-                        <i class="fa-solid fa-earth-asia mr-1.5"></i> Vũ trụ truyện
+                        <i class="fa-solid fa-earth-asia mr-1.5"></i> ${t('nav.storyverses', lang)}
                         <span class="absolute bottom-0 left-0 w-0 h-0.5 bg-amber-400 transition-all duration-300 group-hover:w-full ${currentPath.startsWith("/storyverses") ? "w-full" : ""}"></span>
                     </a>
                     <a href="/characters" class="relative px-2 py-1 transition-colors hover:text-amber-400 ${currentPath.startsWith("/characters") ? "text-amber-400" : "text-gray-700 dark:text-gray-300"} group">
-                        <i class="fa-solid fa-users mr-1.5"></i> Nhân vật
+                        <i class="fa-solid fa-users mr-1.5"></i> ${t('nav.characters', lang)}
                         <span class="absolute bottom-0 left-0 w-0 h-0.5 bg-amber-400 transition-all duration-300 group-hover:w-full ${currentPath.startsWith("/characters") ? "w-full" : ""}"></span>
                     </a>
                 </nav>
 
                 <!-- Unified Search Bar -->
                 <form action="/search" method="GET" class="hidden lg:flex items-center relative max-w-md flex-grow mx-4 group">
-                    <input type="text" name="q" placeholder="Tìm truyện, tác giả, nhân vật..." required class="w-full bg-gray-100/80 dark:bg-[#0f111a]/80 backdrop-blur border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white rounded-xl pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all duration-300 group-hover:bg-gray-100 dark:group-hover:bg-[#0f111a]">
+                    <input type="text" name="q" placeholder="${t('nav.search_placeholder', lang)}" required class="w-full bg-gray-100/80 dark:bg-[#0f111a]/80 backdrop-blur border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white rounded-xl pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all duration-300 group-hover:bg-gray-100 dark:group-hover:bg-[#0f111a]">
                     <i class="fa-solid fa-magnifying-glass absolute left-3.5 text-gray-500 text-sm group-focus-within:text-amber-500 transition-colors"></i>
                 </form>
             </div>
 
             <!-- User Auth Profile -->
             <div class="flex items-center space-x-4">
-                <button onclick="setNextTheme()" class="p-2 text-gray-600 dark:text-gray-400 hover:text-amber-500 dark:hover:text-amber-400 transition-all duration-300 flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 active:scale-90 transform" title="Chuyển chế độ giao diện">
+                <button onclick="setNextTheme()" class="p-2 text-gray-600 dark:text-gray-400 hover:text-amber-500 dark:hover:text-amber-400 transition-all duration-300 flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 active:scale-90 transform" title="${t('theme.toggle', lang)}">
                     <i id="theme-toggle-icon" class="fa-solid fa-desktop"></i>
                 </button>
                 ${user ? html`
@@ -307,37 +308,37 @@ export function layout(title: string, content: any, user: db.User | null, curren
                     <!-- Dropdown menu -->
                     <div id="user-dropdown-menu" class="hidden absolute right-0 mt-2 w-56 bg-white dark:bg-[#161925] border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg py-1 z-50 origin-top-right">
                         <a href="/profile/${user.username}" class="group flex items-center px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-amber-500/10 hover:to-yellow-400/10 hover:text-amber-500 transition-all duration-200">
-                            <i class="fa-regular fa-user mr-3 w-4 text-center group-hover:scale-110 transition-transform"></i> Trang cá nhân
+                            <i class="fa-regular fa-user mr-3 w-4 text-center group-hover:scale-110 transition-transform"></i> ${t('menu.profile', lang)}
                         </a>
                         <a href="/settings" class="group flex items-center px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-amber-500/10 hover:to-yellow-400/10 hover:text-amber-500 transition-all duration-200">
-                            <i class="fa-solid fa-gear mr-3 w-4 text-center group-hover:rotate-90 transition-transform duration-300"></i> Cài đặt
+                            <i class="fa-solid fa-gear mr-3 w-4 text-center group-hover:rotate-90 transition-transform duration-300"></i> ${t('menu.settings', lang)}
                         </a>
                         ${user && user.is_creator ? html`
                         <a href="/creator" class="group flex items-center px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-amber-500/10 hover:to-yellow-400/10 hover:text-amber-500 transition-all duration-200">
-                            <i class="fa-solid fa-feather-pointed mr-3 w-4 text-center group-hover:scale-110 transition-transform"></i> Nhà sáng tạo
+                            <i class="fa-solid fa-feather-pointed mr-3 w-4 text-center group-hover:scale-110 transition-transform"></i> ${t('menu.creator', lang)}
                         </a>
                         ` : ""}
                         ${isAdmin ? html`
                         <a href="/admin" class="group flex items-center px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-amber-500/10 hover:to-yellow-400/10 hover:text-amber-500 transition-all duration-200">
-                            <i class="fa-solid fa-user-shield mr-3 w-4 text-center group-hover:scale-110 transition-transform"></i> Admin
+                            <i class="fa-solid fa-user-shield mr-3 w-4 text-center group-hover:scale-110 transition-transform"></i> ${t('menu.admin', lang)}
                         </a>
                         ` : ""}
                         ${user ? html`
                         <a href="/notifications" class="group flex items-center px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-amber-500/10 hover:to-yellow-400/10 hover:text-amber-500 transition-all duration-200 relative">
-                            <i class="fa-solid fa-bell mr-3 w-4 text-center ${unreadNotifsCount > 0 ? "notification-badge" : ""}"></i> Thông báo
+                            <i class="fa-solid fa-bell mr-3 w-4 text-center ${unreadNotifsCount > 0 ? "notification-badge" : ""}"></i> ${t('menu.notifications', lang)}
                             ${unreadNotifsCount > 0 ? html`<span class="ml-auto inline-flex items-center justify-center bg-red-500 text-white font-bold text-xs px-2 py-0.5 rounded-full notification-badge">${unreadNotifsCount}</span>` : ""}
                         </a>
                         ` : ""}
                         <div class="border-t border-gray-200 dark:border-gray-700 my-1"></div>
                         <button onclick="logout()" class="w-full group flex items-center px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-all duration-200">
-                            <i class="fa-solid fa-right-from-bracket mr-3 w-4 text-center group-hover:translate-x-1 transition-transform"></i> Đăng xuất
+                            <i class="fa-solid fa-right-from-bracket mr-3 w-4 text-center group-hover:translate-x-1 transition-transform"></i> ${t('menu.logout', lang)}
                         </button>
                     </div>
                 </div>
                 ` : html`
                 <div class="flex items-center space-x-3">
-                    <button onclick="openAuthModal('login')" class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-amber-500 transition-colors active:scale-95 transform">Đăng nhập</button>
-                    <button onclick="openAuthModal('register')" class="px-5 py-2.5 text-sm font-semibold text-black bg-gradient-to-r from-amber-500 to-yellow-400 rounded-xl hover:brightness-110 hover:shadow-lg hover:shadow-yellow-500/25 active:scale-95 transform transition-all duration-300">Đăng ký</button>
+                    <button onclick="openAuthModal('login')" class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-amber-500 transition-colors active:scale-95 transform">${t('menu.login', lang)}</button>
+                    <button onclick="openAuthModal('register')" class="px-5 py-2.5 text-sm font-semibold text-black bg-gradient-to-r from-amber-500 to-yellow-400 rounded-xl hover:brightness-110 hover:shadow-lg hover:shadow-yellow-500/25 active:scale-95 transform transition-all duration-300">${t('menu.signup', lang)}</button>
                 </div>
                 `}
             </div>
@@ -348,34 +349,34 @@ export function layout(title: string, content: any, user: db.User | null, curren
     <div id="mobile-menu" class="hidden md:hidden border-b border-gray-200 dark:border-gray-800 bg-white/95 dark:bg-[#161925]/95 backdrop-blur px-4 py-3 space-y-2">
         <!-- Mobile Search Form -->
         <form action="/search" method="GET" class="flex items-center relative pb-2">
-            <input type="text" name="q" placeholder="Tìm kiếm..." required class="w-full bg-gray-50 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all duration-300">
+            <input type="text" name="q" placeholder="${t('nav.search_placeholder', lang)}" required class="w-full bg-gray-50 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all duration-300">
             <i class="fa-solid fa-magnifying-glass absolute left-3 text-gray-500 text-sm"></i>
         </form>
         <a href="/" class="group flex items-center px-3 py-2.5 rounded-xl text-base font-medium ${currentPath === "/" ? "bg-gradient-to-r from-amber-500/10 to-yellow-400/10 text-amber-500 border border-amber-500/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60"} transition-all duration-200">
-            <i class="fa-solid fa-house w-6 text-center group-hover:scale-110 transition-transform"></i> <span class="ml-3">Trang chủ</span>
+            <i class="fa-solid fa-house w-6 text-center group-hover:scale-110 transition-transform"></i> <span class="ml-3">${t('nav.home', lang)}</span>
         </a>
         <a href="/storybooks" class="group flex items-center px-3 py-2.5 rounded-xl text-base font-medium ${currentPath.startsWith("/storybooks") ? "bg-gradient-to-r from-amber-500/10 to-yellow-400/10 text-amber-500 border border-amber-500/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60"} transition-all duration-200">
-            <i class="fa-solid fa-book w-6 text-center group-hover:scale-110 transition-transform"></i> <span class="ml-3">Bộ truyện</span>
+            <i class="fa-solid fa-book w-6 text-center group-hover:scale-110 transition-transform"></i> <span class="ml-3">${t('nav.storybooks', lang)}</span>
         </a>
         <a href="/storyverses" class="group flex items-center px-3 py-2.5 rounded-xl text-base font-medium ${currentPath.startsWith("/storyverses") ? "bg-gradient-to-r from-amber-500/10 to-yellow-400/10 text-amber-500 border border-amber-500/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60"} transition-all duration-200">
-            <i class="fa-solid fa-earth-asia w-6 text-center group-hover:scale-110 transition-transform"></i> <span class="ml-3">Vũ trụ truyện</span>
+            <i class="fa-solid fa-earth-asia w-6 text-center group-hover:scale-110 transition-transform"></i> <span class="ml-3">${t('nav.storyverses', lang)}</span>
         </a>
         <a href="/characters" class="group flex items-center px-3 py-2.5 rounded-xl text-base font-medium ${currentPath.startsWith("/characters") ? "bg-gradient-to-r from-amber-500/10 to-yellow-400/10 text-amber-500 border border-amber-500/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60"} transition-all duration-200">
-            <i class="fa-solid fa-users w-6 text-center group-hover:scale-110 transition-transform"></i> <span class="ml-3">Nhân vật</span>
+            <i class="fa-solid fa-users w-6 text-center group-hover:scale-110 transition-transform"></i> <span class="ml-3">${t('nav.characters', lang)}</span>
         </a>
         ${user && user.is_creator ? html`
         <a href="/creator" class="group flex items-center px-3 py-2.5 rounded-xl text-base font-medium ${currentPath.startsWith("/creator") ? "bg-gradient-to-r from-amber-500/10 to-yellow-400/10 text-amber-500 border border-amber-500/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60"} transition-all duration-200">
-            <i class="fa-solid fa-feather-pointed w-6 text-center group-hover:scale-110 transition-transform"></i> <span class="ml-3">Nhà sáng tạo</span>
+            <i class="fa-solid fa-feather-pointed w-6 text-center group-hover:scale-110 transition-transform"></i> <span class="ml-3">${t('menu.creator', lang)}</span>
         </a>
         ` : ""}
         ${isAdmin ? html`
         <a href="/admin" class="group flex items-center px-3 py-2.5 rounded-xl text-base font-medium ${currentPath.startsWith("/admin") ? "bg-gradient-to-r from-amber-500/10 to-yellow-400/10 text-amber-500 border border-amber-500/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60"} transition-all duration-200">
-            <i class="fa-solid fa-user-shield w-6 text-center group-hover:scale-110 transition-transform"></i> <span class="ml-3">Admin</span>
+            <i class="fa-solid fa-user-shield w-6 text-center group-hover:scale-110 transition-transform"></i> <span class="ml-3">${t('menu.admin', lang)}</span>
         </a>
         ` : ""}
         ${user ? html`
         <a href="/notifications" class="group flex items-center px-3 py-2.5 rounded-xl text-base font-medium ${currentPath === "/notifications" ? "bg-gradient-to-r from-amber-500/10 to-yellow-400/10 text-amber-500 border border-amber-500/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60"} transition-all duration-200 relative">
-            <i class="fa-solid fa-bell w-6 text-center ${unreadNotifsCount > 0 ? "notification-badge" : ""}"></i> <span class="ml-3">Thông báo</span>
+            <i class="fa-solid fa-bell w-6 text-center ${unreadNotifsCount > 0 ? "notification-badge" : ""}"></i> <span class="ml-3">${t('menu.notifications', lang)}</span>
             ${unreadNotifsCount > 0 ? html`<span class="ml-auto inline-flex items-center justify-center bg-red-500 text-white font-bold text-xs px-2 py-0.5 rounded-full notification-badge">${unreadNotifsCount}</span>` : ""}
         </a>
         ` : ""}
@@ -391,7 +392,7 @@ export function layout(title: string, content: any, user: db.User | null, curren
         <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0">
             <div class="flex items-center space-x-2">
                 <span class="font-semibold text-gray-600 dark:text-gray-400">Storybook</span>
-                <span>&copy; ${new Date().getFullYear()} - Nền tảng kể chuyện cộng tác hỗ trợ AI</span>
+                <span>&copy; ${new Date().getFullYear()} - AI-supported collaborative storytelling platform</span>
             </div>
             <div class="flex space-x-6">
                 <a href="/mcp" class="hover:text-amber-400 transition-colors" target="_blank"><i class="fa-solid fa-network-wired mr-1.5"></i> MCP Server</a>
@@ -406,36 +407,36 @@ export function layout(title: string, content: any, user: db.User | null, curren
                 <i class="fa-solid fa-xmark text-xl"></i>
             </button>
 
-            <h3 id="modalTitle" class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Đăng nhập</h3>
+            <h3 id="modalTitle" class="text-2xl font-bold text-gray-900 dark:text-white mb-6">${t('auth.login_title', lang)}</h3>
 
             <form id="authForm" onsubmit="handleAuthSubmit(event)" class="space-y-4">
                 <input type="hidden" id="authType" value="login">
 
                 <div>
-                    <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5">Tài khoản (username)</label>
-                    <input type="text" id="authUsername" required minlength="3" class="w-full bg-gray-50 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors" placeholder="Nhập tên tài khoản...">
+                    <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5">${t('auth.username', lang)}</label>
+                    <input type="text" id="authUsername" required minlength="3" class="w-full bg-gray-50 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors" placeholder="${t('auth.email', lang)}">
                 </div>
 
                 <div id="displayNameGroup" class="hidden">
-                    <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5">Tên hiển thị (display name)</label>
-                    <input type="text" id="authDisplayName" class="w-full bg-gray-50 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors" placeholder="Tên hiển thị công khai...">
+                    <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5">${t('profile.display_name', lang)}</label>
+                    <input type="text" id="authDisplayName" class="w-full bg-gray-50 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors" placeholder="${t('profile.display_name', lang)}">
                 </div>
 
                 <div>
-                    <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5">Mật khẩu</label>
+                    <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5">${t('auth.password', lang)}</label>
                     <input type="password" id="authPassword" required minlength="4" class="w-full bg-gray-50 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors" placeholder="••••••••">
                 </div>
 
                 <div id="authError" class="text-red-400 text-sm hidden py-1"></div>
 
                 <button type="submit" class="w-full py-3 bg-gradient-to-r from-amber-500 to-yellow-400 text-black font-bold rounded-xl hover:brightness-110 transition-all shadow-lg shadow-yellow-500/10 mt-6">
-                    Xác nhận
+                    ${t('common.confirm', lang)}
                 </button>
             </form>
 
             <div class="mt-6 text-center text-sm text-gray-600 dark:text-gray-400 border-t border-gray-200 dark:border-gray-800/60 pt-4">
-                <span id="switchAuthPrompt">Chưa có tài khoản?</span>
-                <button onclick="toggleAuthType()" id="switchAuthBtn" class="text-amber-400 font-semibold hover:underline ml-1">Đăng ký ngay</button>
+                <span id="switchAuthPrompt">${t('auth.no_account', lang)}</span>
+                <button onclick="toggleAuthType()" id="switchAuthBtn" class="text-amber-400 font-semibold hover:underline ml-1">${t('menu.signup', lang)}</button>
             </div>
         </div>
     </div>
@@ -481,15 +482,15 @@ export function layout(title: string, content: any, user: db.User | null, curren
             typeInput.value = type;
 
             if (type === 'login') {
-                title.innerText = 'Đăng nhập';
+                title.innerText = '${t('auth.login_title', lang)}';
                 nameGroup.classList.add('hidden');
-                prompt.innerText = 'Chưa có tài khoản?';
-                switchBtn.innerText = 'Đăng ký ngay';
+                prompt.innerText = '${t('auth.no_account', lang)}';
+                switchBtn.innerText = '${t('menu.signup', lang)}';
             } else {
-                title.innerText = 'Tạo tài khoản';
+                title.innerText = '${t('auth.signup_title', lang)}';
                 nameGroup.classList.remove('hidden');
-                prompt.innerText = 'Đã có tài khoản?';
-                switchBtn.innerText = 'Đăng nhập';
+                prompt.innerText = '${t('auth.have_account', lang)}';
+                switchBtn.innerText = '${t('menu.login', lang)}';
             }
 
             modal.classList.remove('hidden');

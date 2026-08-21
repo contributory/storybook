@@ -79,7 +79,9 @@ export async function authMiddleware(c: any, next: () => Promise<void>) {
 export async function renderWithLayout(c: any, title: string, rendered: any, currentPath = "/") {
   const user = c.get("user");
   const count = user ? await db.getUnreadNotificationsCount(user.username) : 0;
-  return c.html(ui.layout(title, rendered, user, currentPath, count));
+  // Get language from user preference or cookie (default to 'vi')
+  const lang = getCookie(c, "lang") || "vi";
+  return c.html(ui.layout(title, rendered, user, currentPath, count, lang as any));
 }
 
 // Helper: check whether the user has enabled the "Nhà sáng tạo" (creator) permission.
