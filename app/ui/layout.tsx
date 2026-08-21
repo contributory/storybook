@@ -1,14 +1,15 @@
 /** @jsxImportSource npm:hono@4.5.11/jsx */
 import { html } from "npm:hono/html";
 import * as db from "../db.ts";
+import type { Language } from "../i18n.ts";
 
 
 // General HTML Layout Wrapper
-export function layout(title: string, content: any, user: db.User | null, currentPath = "/", unreadNotifsCount = 0) {
+export function layout(title: string, content: any, user: db.User | null, currentPath = "/", unreadNotifsCount = 0, lang: Language = 'vi') {
   const isAdmin = user ? (user.is_admin || user.is_owner) : false;
 
   return html`<!DOCTYPE html>
-<html lang="vi">
+<html lang="${lang}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
