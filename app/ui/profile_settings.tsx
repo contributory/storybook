@@ -200,7 +200,6 @@ export function renderProfilePage(
 }
 
 export function renderSettingsPage(user: db.User, currentLang: string = 'vi') {
-  const userLang = (user as any).language || currentLang;
   return html`
     <div class="max-w-xl mx-auto space-y-8 text-left">
         <div class="space-y-2">
@@ -222,10 +221,10 @@ export function renderSettingsPage(user: db.User, currentLang: string = 'vi') {
                 <div>
                     <label class="block text-xs font-semibold text-gray-650 dark:text-gray-400 uppercase tracking-wider mb-1.5">Ngôn ngữ giao diện</label>
                     <select id="settingsLanguage" class="w-full bg-gray-50 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors">
-                        <option value="vi" ${userLang === 'vi' ? 'selected' : ''}>🇻🇳 Tiếng Việt</option>
-                        <option value="en" ${userLang === 'en' ? 'selected' : ''}>🇬🇧 English</option>
+                        <option value="vi">${'🇻🇳 Tiếng Việt'}</option>
+                        <option value="en">${'🇬🇧 English'}</option>
                     </select>
-                    <span class="text-[10px] text-gray-500 dark:text-gray-500 mt-1 block">* Chọn ngôn ngữ ưa thích cho giao diện ứng dụng.</span>
+                    <span class="text-[10px] text-gray-500 dark:text-gray-500 mt-1 block">* Chọn ngôn ngữ ưa thích cho giao diện ứng dụng (lưu cục bộ).</span>
                 </div>
 
                 <!-- Toggle Creator Mode -->
@@ -291,7 +290,6 @@ export function renderSettingsPage(user: db.User, currentLang: string = 'vi') {
             e.preventDefault();
             const displayName = document.getElementById('settingsDisplayName').value.trim();
             const isCreator = document.getElementById('settingsIsCreator').checked;
-            const language = document.getElementById('settingsLanguage').value;
             const aiAuthorName = document.getElementById('settingsAiAuthorName').value.trim();
             const des = document.getElementById('settingsDes').value.trim();
             const avatar = document.getElementById('settingsAvatar').value.trim();
@@ -305,7 +303,7 @@ export function renderSettingsPage(user: db.User, currentLang: string = 'vi') {
                 const res = await fetch('/api/settings', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ display_name: displayName, is_creator: isCreator, language: language, ai_author_name: aiAuthorName, des, avatar })
+                    body: JSON.stringify({ display_name: displayName, is_creator: isCreator, ai_author_name: aiAuthorName, des, avatar })
                 });
                 const data = await res.json();
                 if (data.success) {
@@ -342,6 +340,21 @@ export function renderSettingsPage(user: db.User, currentLang: string = 'vi') {
             document.execCommand('copy');
             alert('Đã sao chép API Token của bạn!');
         }
+
+        // Load language preference from localStorage on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedLang = localStorage.getItem('preferred_language');
+            if (savedLang && document.getElementById('settingsLanguage')) {
+                document.getElementById('settingsLanguage').value = savedLang;
+            }
+        });
+
+        // Save language preference to localStorage when changed
+        document.addEventListener('change', function(e) {
+            if (e.target && e.target.id === 'settingsLanguage') {
+                localStorage.setItem('preferred_language', e.target.value);
+            }
+        });
     </script>
   `;
 }

@@ -60,7 +60,7 @@ export function registerProfileRoutes(app: AppType) {
     if (!user) return c.json({ success: false, error: "Unauthorized" }, 401);
 
     try {
-      const { display_name, is_creator, ai_author_name, des, avatar, language } = await c.req.json();
+      const { display_name, is_creator, ai_author_name, des, avatar } = await c.req.json();
       if (!display_name) {
         return c.json({ success: false, error: "Display name is required" }, 400);
       }
@@ -71,8 +71,7 @@ export function registerProfileRoutes(app: AppType) {
         !!is_creator,
         (ai_author_name || "").trim(),
         (des || "").trim(),
-        (avatar || "").trim(),
-        language || "vi"
+        (avatar || "").trim()
       );
 
       return c.json({ success });
