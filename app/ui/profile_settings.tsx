@@ -223,6 +223,11 @@ export function renderSettingsPage(user: db.User, currentLang: string = 'vi') {
                     <select id="settingsLanguage" class="w-full bg-gray-50 dark:bg-[#0f111a] border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors">
                         <option value="vi">${'🇻🇳 Tiếng Việt'}</option>
                         <option value="en">${'🇬🇧 English'}</option>
+                        <option value="zh">${'🇨🇳 中文 (Tiếng Trung)'}</option>
+                        <option value="ja">${'🇯🇵 日本語 (Tiếng Nhật)'}</option>
+                        <option value="ko">${'🇰🇷 한국어 (Tiếng Hàn)'}</option>
+                        <option value="th">${'🇹🇭 ไทย (Tiếng Thái)'}</option>
+                        <option value="id">${'🇮🇩 Bahasa Indonesia (Tiếng Indo)'}</option>
                     </select>
                     <span class="text-[10px] text-gray-500 dark:text-gray-500 mt-1 block">* Chọn ngôn ngữ ưa thích cho giao diện ứng dụng (lưu cục bộ).</span>
                 </div>
