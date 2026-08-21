@@ -8,6 +8,9 @@ export interface Translation {
   [key: string]: string | Translation;
 }
 
+// Only support these languages for now
+export const SUPPORTED_LANGUAGES: Language[] = ['en', 'vi'];
+
 export const translations: Record<Language, Translation> = {
   en: {
     // Navigation
@@ -352,7 +355,7 @@ export function getDefaultLanguage(): Language {
  * Check if a language is supported
  */
 export function isSupportedLanguage(lang: string): lang is Language {
-  return lang === 'en' || lang === 'vi';
+  return SUPPORTED_LANGUAGES.includes(lang as Language);
 }
 
 /**
@@ -363,4 +366,13 @@ export function getSupportedLanguages(): { code: Language; name: string }[] {
     { code: 'vi', name: 'Tiếng Việt' },
     { code: 'en', name: 'English' }
   ];
+}
+
+/**
+ * Validate and normalize language code
+ */
+export function normalizeLanguage(lang: string | null | undefined): Language {
+  if (!lang) return 'vi';
+  const normalized = lang.toLowerCase();
+  return isSupportedLanguage(normalized) ? (normalized as Language) : 'vi';
 }
