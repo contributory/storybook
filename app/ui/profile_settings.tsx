@@ -1,5 +1,5 @@
-/** @jsxImportSource npm:hono@4.5.11/jsx */
-import { html } from "npm:hono/html";
+/** @jsxImportSource hono/jsx */
+import { html } from "hono/html";
 import * as db from "../db.ts";
 import { markdownToText } from "./markdown.ts";
 import { renderPagination } from "./pagination.tsx";
@@ -199,9 +199,9 @@ export function renderProfilePage(
   `;
 }
 
-import { t } from "../i18n.ts";
+import { t, type Language } from "../i18n.ts";
 
-export function renderSettingsPage(user: db.User, currentLang: string = 'vi') {
+export function renderSettingsPage(user: db.User, currentLang: Language = 'vi') {
   return html`
     <div class="max-w-xl mx-auto space-y-8 text-left">
         <div class="space-y-2">

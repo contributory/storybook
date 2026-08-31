@@ -7,12 +7,16 @@ await db.initDb();
 // 2. Ensure owner account credentials are set up
 await ensureOwnerAccount();
 
-// 3. Start Hono Deno web server
-console.log("Starting Storybook Hono app on Deno...");
+// 3. Start Hono Node.js web server
+console.log("Starting Storybook Hono app on Node.js...");
 
 // Boot server locally if run directly
-if (import.meta.main) {
-  Deno.serve({ port: 8000 }, app.fetch);
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const { serve } = await import("@hono/node-server");
+  const port = Number(process.env.PORT || 8000);
+  serve({ fetch: app.fetch, port }, (info) => {
+    console.log(`Storybook listening on http://localhost:${info.port}`);
+  });
 }
 
-export default app.fetch; // This is the entry point for HTTP vals on Val Town / Deno Context
+export default app.fetch;

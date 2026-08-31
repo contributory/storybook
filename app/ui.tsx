@@ -1,4 +1,4 @@
-/** @jsxImportSource npm:hono@4.5.11/jsx */
+/** @jsxImportSource hono/jsx */
 export { layout } from "./ui/layout.tsx";
 export { renderHomepage } from "./ui/homepage.tsx";
 export { renderStoryverses, renderStoryverseDetail } from "./ui/storyverses.tsx";

@@ -1,4 +1,4 @@
-import { Hono } from "npm:hono";
+import { Hono } from "hono";
 import * as db from "./db.ts";
 import { mcpHttpHandler } from "./mcp.ts";
 import { authMiddleware } from "./middleware.ts";

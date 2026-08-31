@@ -1,5 +1,5 @@
-/** @jsxImportSource npm:hono@4.5.11/jsx */
-import { html } from "npm:hono/html";
+/** @jsxImportSource hono/jsx */
+import { html } from "hono/html";
 
 // Comments Feed and Form template (shared on book and storyverse detail pages)
 export function renderCommentsArea(target_type: string, target_id: string) {

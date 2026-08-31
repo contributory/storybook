@@ -1,11 +1,12 @@
-import { McpServer } from "npm:@modelcontextprotocol/sdk@^1.17.3/server/mcp.js";
-import { StreamableHTTPTransport } from "npm:@hono/mcp@0.2.0";
-import { Client } from "npm:@modelcontextprotocol/sdk@^1.17.3/client/index.js";
-import { InMemoryTransport } from "npm:@modelcontextprotocol/sdk@^1.17.3/inMemory.js";
-import { z } from "npm:zod@^3.25";
+import { createHash } from "node:crypto";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StreamableHTTPTransport } from "@hono/mcp";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import { z } from "zod";
 import * as db from "./db.ts";
 
-const BASE_URL = Deno.env.get("BASE_URL") || "http://localhost:8000";
+const BASE_URL = process.env.BASE_URL || "http://localhost:8000";
 
 // Tools that require owner/admin privileges
 const SENSITIVE_TOOLS = [
@@ -40,10 +41,7 @@ function guard(name: string, user: db.User): { success: false; error: string } |
 
 // --- Helpers for list tools (pagination, filtering, password hashing) ---
 async function sha256(message: string): Promise<string> {
-  const msgBuffer = new TextEncoder().encode(message);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+  return createHash("sha256").update(message, "utf8").digest("hex");
 }
 
 function clampLength(v: any): number {

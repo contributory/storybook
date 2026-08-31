@@ -1,7 +1,9 @@
-import { getCookie, setCookie, deleteCookie } from "npm:hono/cookie";
-import type { Hono } from "npm:hono";
+import { createHash } from "node:crypto";
+import { getCookie, setCookie, deleteCookie } from "hono/cookie";
+import type { Hono } from "hono";
 import * as db from "./db.ts";
 import * as ui from "./ui.tsx";
+import type { Language } from "./i18n.ts";
 
 // Variables shared through the Hono context
 export type AppVariables = {
@@ -11,14 +13,11 @@ export type AppVariables = {
 export type AppType = Hono<{ Variables: AppVariables }>;
 
 // App Secret for Cookie signing
-const APP_SECRET = Deno.env.get("APP_SECRET") || "hono-deno-storybook-secret-key-123456";
+const APP_SECRET = process.env.APP_SECRET || "hono-deno-storybook-secret-key-123456";
 
 // SHA-256 Hash Helper
 export async function sha256(message: string): Promise<string> {
-  const msgBuffer = new TextEncoder().encode(message);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+  return createHash("sha256").update(message, "utf8").digest("hex");
 }
 
 // Session Signature Helper
@@ -28,8 +27,8 @@ async function generateSessionHash(username: string, passwordHash: string): Prom
 
 // Initialize Owner account
 export async function ensureOwnerAccount() {
-  const ownerUsername = Deno.env.get("OWNER_USERNAME") || "owner";
-  const ownerPassword = Deno.env.get("OWNER_PASSWORD") || "owner123";
+  const ownerUsername = process.env.OWNER_USERNAME || "owner";
+  const ownerPassword = process.env.OWNER_PASSWORD || "owner123";
 
   const existingOwner = await db.getUserByUsername(ownerUsername);
   const passwordHash = await sha256(ownerPassword);
@@ -76,12 +75,12 @@ export async function authMiddleware(c: any, next: () => Promise<void>) {
 }
 
 // Helper to render layout with unread notifications count
-export async function renderWithLayout(c: any, title: string, rendered: any, currentPath = "/") {
+export async function renderWithLayout(c: any, title: string, rendered: any, currentPath = "/", lang: Language = "vi") {
   const user = c.get("user");
   const count = user ? await db.getUnreadNotificationsCount(user.username) : 0;
   // Get language from user preference or cookie (default to 'vi')
-  const lang = getCookie(c, "lang") || "vi";
-  return c.html(ui.layout(title, rendered, user, currentPath, count, lang as any));
+  const effectiveLang = user?.language || getCookie(c, "lang") || lang;
+  return c.html(ui.layout(title, rendered, user, currentPath, count, effectiveLang as Language));
 }
 
 // Helper: check whether the user has enabled the "Nhà sáng tạo" (creator) permission.

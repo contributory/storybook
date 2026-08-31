@@ -1,5 +1,5 @@
-/** @jsxImportSource npm:hono@4.5.11/jsx */
-import { html } from "npm:hono/html";
+/** @jsxImportSource hono/jsx */
+import { html } from "hono/html";
 import * as db from "../db.ts";
 import type { Language } from "../i18n.ts";
 import { t } from "../i18n.ts";

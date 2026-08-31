@@ -1,17 +1,17 @@
-import { createClient, type Client } from "npm:@libsql/client/web";
+import { createClient, type Client } from "@libsql/client";
 
 // Environment variables
-const TURSO_DB_URL = Deno.env.get("TURSO_DB_URL") || "";
-const TURSO_DB_AUTH_TOKEN = Deno.env.get("TURSO_DB_AUTH_TOKEN") || "";
+const TURSO_DB_URL = process.env.TURSO_DB_URL || "";
+const TURSO_DB_AUTH_TOKEN = process.env.TURSO_DB_AUTH_TOKEN || "";
 
-const S3_ENDPOINT = Deno.env.get("S3_ENDPOINT") || "";
-const S3_ACCESS_KEY_ID = Deno.env.get("S3_ACCESS_KEY_ID") || "";
-const S3_SECRET_ACCESS_KEY = Deno.env.get("S3_SECRET_ACCESS_KEY") || "";
-const S3_BUCKET = Deno.env.get("S3_BUCKET") || "";
-const S3_REGION = Deno.env.get("S3_REGION") || "auto";
+const S3_ENDPOINT = process.env.S3_ENDPOINT || "";
+const S3_ACCESS_KEY_ID = process.env.S3_ACCESS_KEY_ID || "";
+const S3_SECRET_ACCESS_KEY = process.env.S3_SECRET_ACCESS_KEY || "";
+const S3_BUCKET = process.env.S3_BUCKET || "";
+const S3_REGION = process.env.S3_REGION || "auto";
 
 // The root owner account defined by environment variables (protected from being edited/deleted)
-const OWNER_USERNAME = (Deno.env.get("OWNER_USERNAME") || "owner").toLowerCase();
+const OWNER_USERNAME = (process.env.OWNER_USERNAME || "owner").toLowerCase();
 
 export function isEnvOwnerUsername(username: string): boolean {
   return username.toLowerCase() === OWNER_USERNAME;
@@ -40,7 +40,7 @@ if (useS3) {
   console.log("S3-compatible storage configured. Initializing S3 client...");
   // Dynamic import of AWS SDK to avoid loading overhead when not in use
   try {
-    const { S3Client } = await import("npm:@aws-sdk/client-s3");
+    const { S3Client } = await import("@aws-sdk/client-s3");
     s3Client = new S3Client({
       endpoint: S3_ENDPOINT,
       region: S3_REGION,
@@ -68,6 +68,7 @@ export interface User {
   api_token: string;
   des: string;
   avatar: string;
+  language?: "en" | "vi";
   created_storybook?: number; // query computed
   created_storyverse?: number; // query computed
   following?: string[]; // list of usernames followed
@@ -343,7 +344,7 @@ export async function initDb() {
 async function putImageToS3(key: string, fileBytes: Uint8Array, contentType: string): Promise<string | null> {
   if (!s3Client) return null;
   try {
-    const { PutObjectCommand } = await import("npm:@aws-sdk/client-s3");
+    const { PutObjectCommand } = await import("@aws-sdk/client-s3");
     await s3Client.send(
       new PutObjectCommand({
         Bucket: S3_BUCKET,
@@ -362,7 +363,7 @@ async function putImageToS3(key: string, fileBytes: Uint8Array, contentType: str
 async function getImageFromS3(key: string): Promise<{ body: Uint8Array, contentType: string } | null> {
   if (!s3Client) return null;
   try {
-    const { GetObjectCommand } = await import("npm:@aws-sdk/client-s3");
+    const { GetObjectCommand } = await import("@aws-sdk/client-s3");
     const response = await s3Client.send(
       new GetObjectCommand({
         Bucket: S3_BUCKET,

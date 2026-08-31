@@ -1,5 +1,5 @@
-import MarkdownIt from "npm:markdown-it@14.1.0";
-import { raw, type HtmlEscapedString } from "npm:hono@4.5.11/utils/html";
+import MarkdownIt from "markdown-it";
+import { raw, type HtmlEscapedString } from "hono/utils/html";
 
 // Shared Markdown renderer used for chapter content & descriptions.
 // html:false keeps raw HTML escaped (XSS-safe); breaks:true maps newlines to <br>.

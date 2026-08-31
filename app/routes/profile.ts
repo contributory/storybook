@@ -1,8 +1,9 @@
+import { randomUUID } from "node:crypto";
 import type { AppType } from "../middleware.ts";
 import * as db from "../db.ts";
 import * as ui from "../ui.tsx";
 import { renderWithLayout } from "../middleware.ts";
-import { getCookie, setCookie } from "npm:hono/cookie";
+import { getCookie, setCookie } from "hono/cookie";
 import { t, SUPPORTED_LANGUAGES, normalizeLanguage } from "../i18n.ts";
 
 export function registerProfileRoutes(app: AppType) {
@@ -55,8 +56,8 @@ export function registerProfileRoutes(app: AppType) {
 
     // Get language from user preference or cookie (default to 'vi')
     const lang = user.language || getCookie(c, "lang") || "vi";
-    const rendered = ui.renderSettingsPage(user, lang);
-    return await renderWithLayout(c, t('settings.title', lang), rendered, "/settings", lang as any);
+    const rendered = ui.renderSettingsPage(user, normalizeLanguage(lang));
+    return await renderWithLayout(c, t("settings.title", normalizeLanguage(lang)), rendered, "/settings", normalizeLanguage(lang));
   });
 
   app.post("/api/settings", async c => {
@@ -96,7 +97,7 @@ export function registerProfileRoutes(app: AppType) {
     if (!user) return c.json({ success: false, error: "Unauthorized" }, 401);
 
     try {
-      const rawToken = `sb_tok_${crypto.randomUUID().replace(/-/g, "")}`;
+      const rawToken = `sb_tok_${randomUUID().replace(/-/g, "")}`;
       const success = await db.updateUserApiToken(user.username, rawToken);
       return c.json({ success, token: rawToken });
     } catch (err: any) {
