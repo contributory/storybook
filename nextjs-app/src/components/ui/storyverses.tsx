@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
@@ -313,7 +314,7 @@ export function StoryverseDetail({ storyverse: sv, characters, user, isCreator }
   );
 }
 
-function renderMarkdown(text: string): JSX.Element {
+function renderMarkdown(text: string): React.JSX.Element {
   // Simple markdown rendering - can be enhanced with a library like react-markdown
   const lines = text.split('\n');
   return (

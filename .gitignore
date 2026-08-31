@@ -1,42 +1,36 @@
 ```
+# Database
+local.db
+
 # Dependencies
 node_modules/
 
-# Build outputs
-.next/
-dist/
-build/
-out/
-
-# Environment variables
+# Environment
 .env
 .env.local
 .env.*
 
-# IDE files
+# Editors
 .vscode/
 .idea/
-*.swp
-*.swo
 
-# Python cache (if present)
+# Logs and temp files
+*.log
+*.tmp
+
+# Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 
-# Logs
-*.log
+# Build outputs
+dist/
+build/
+.next/
+out/
 
 # OS generated files
 .DS_Store
 Thumbs.db
-
-# Coverage reports
-coverage/
-htmlcov/
-.coverage
-
-# Temporary files
-*.tmp
 ```

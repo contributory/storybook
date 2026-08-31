@@ -35,7 +35,7 @@ export function AuthProvider({ children, initialUser }: { children: ReactNode; i
   const openAuthModal = useCallback((type: 'login' | 'register' = 'login') => {
     // Create and show auth modal
     const modal = document.getElementById('authModal');
-    const typeInput = document.getElementById('authType');
+    const typeInput = document.getElementById('authType') as HTMLInputElement;
     const title = document.getElementById('modalTitle');
     const nameGroup = document.getElementById('displayNameGroup');
     const prompt = document.getElementById('switchAuthPrompt');
