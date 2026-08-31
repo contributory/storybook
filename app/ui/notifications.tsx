@@ -1,7 +1,7 @@
 /** @jsxImportSource hono/jsx */
 import { html } from "hono/html";
-import * as db from "../db.ts";
-import { renderPagination } from "./pagination.tsx";
+import * as db from "../db.js";
+import { renderPagination } from "./pagination.js";
 
 export function renderNotificationsPage(notifsResult: db.PageResult<db.Notification>) {
   const notifications = notifsResult.items;

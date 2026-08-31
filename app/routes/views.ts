@@ -1,7 +1,7 @@
-import type { AppType } from "../middleware.ts";
-import * as db from "../db.ts";
-import * as ui from "../ui.tsx";
-import { renderWithLayout, hasCreatorAccess } from "../middleware.ts";
+import type { AppType } from "../middleware.js";
+import * as db from "../db.js";
+import * as ui from "../ui.js";
+import { renderWithLayout, hasCreatorAccess } from "../middleware.js";
 
 export function registerViewRoutes(app: AppType) {
   app.get("/", async c => {

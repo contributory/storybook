@@ -1,8 +1,8 @@
 /** @jsxImportSource hono/jsx */
 import { html } from "hono/html";
-import * as db from "../db.ts";
-import type { Language } from "../i18n.ts";
-import { t } from "../i18n.ts";
+import * as db from "../db.js";
+import type { Language } from "../i18n.js";
+import { t } from "../i18n.js";
 
 
 // General HTML Layout Wrapper

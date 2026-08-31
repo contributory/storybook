@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto";
-import type { AppType } from "../middleware.ts";
-import * as db from "../db.ts";
-import * as ui from "../ui.tsx";
-import { renderWithLayout } from "../middleware.ts";
+import type { AppType } from "../middleware.js";
+import * as db from "../db.js";
+import * as ui from "../ui.js";
+import { renderWithLayout } from "../middleware.js";
 import { getCookie, setCookie } from "hono/cookie";
-import { t, SUPPORTED_LANGUAGES, normalizeLanguage } from "../i18n.ts";
+import { t, SUPPORTED_LANGUAGES, normalizeLanguage } from "../i18n.js";
 
 export function registerProfileRoutes(app: AppType) {
   // --- PROFILE ROUTES ---

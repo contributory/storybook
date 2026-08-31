@@ -1,7 +1,7 @@
 /** @jsxImportSource hono/jsx */
 import { html } from "hono/html";
-import * as db from "../db.ts";
-import { markdownToText } from "./markdown.ts";
+import * as db from "../db.js";
+import { markdownToText } from "./markdown.js";
 
 export function renderSearchResults(
   query: string,

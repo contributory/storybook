@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import type { Hono } from "hono";
-import * as db from "./db.ts";
-import * as ui from "./ui.tsx";
-import type { Language } from "./i18n.ts";
+import * as db from "./db.js";
+import * as ui from "./ui.js";
+import type { Language } from "./i18n.js";
 
 // Variables shared through the Hono context
 export type AppVariables = {

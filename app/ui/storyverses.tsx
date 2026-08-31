@@ -1,10 +1,10 @@
 /** @jsxImportSource hono/jsx */
 import { html } from "hono/html";
-import * as db from "../db.ts";
+import * as db from "../db.js";
 
-import { renderCommentsArea } from "./comments.tsx";
-import { renderMarkdown } from "./markdown.ts";
-import { renderPagination } from "./pagination.tsx";
+import { renderCommentsArea } from "./comments.js";
+import { renderMarkdown } from "./markdown.js";
+import { renderPagination } from "./pagination.js";
 
 // Storyverses directory list view
 export function renderStoryverses(versesResult: db.PageResult<db.Storyverse>, user: db.User | null) {

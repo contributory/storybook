@@ -1,8 +1,8 @@
 /** @jsxImportSource hono/jsx */
 import { html } from "hono/html";
-import * as db from "../db.ts";
-import { markdownToText } from "./markdown.ts";
-import { renderPagination } from "./pagination.tsx";
+import * as db from "../db.js";
+import { markdownToText } from "./markdown.js";
+import { renderPagination } from "./pagination.js";
 
 // Homepage View
 export function renderHomepage(booksResult: db.PageResult<db.Storybook>, progress: db.ReadingProgress[], user: db.User | null) {

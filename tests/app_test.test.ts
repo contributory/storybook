@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from "vitest";
-import * as db from "../app/db.ts";
-import { executeMcpTool, handleMcpRequest } from "../app/mcp.ts";
-import app, { sha256 } from "../app/app.ts";
+import * as db from "../app/db.js";
+import { executeMcpTool, handleMcpRequest } from "../app/mcp.js";
+import app, { sha256 } from "../app/app.js";
 
 describe("Storybook", () => {
   beforeAll(async () => { await db.initDb(); });

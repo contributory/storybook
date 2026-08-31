@@ -1,6 +1,6 @@
-import type { AppType } from "../middleware.ts";
-import * as db from "../db.ts";
-import { hasCreatorAccess } from "../middleware.ts";
+import type { AppType } from "../middleware.js";
+import * as db from "../db.js";
+import { hasCreatorAccess } from "../middleware.js";
 
 export function registerStoryverseRoutes(app: AppType) {
   // --- STORYVERSE API ---

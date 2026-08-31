@@ -1,19 +1,19 @@
 import { Hono } from "hono";
-import * as db from "./db.ts";
-import { mcpHttpHandler } from "./mcp.ts";
-import { authMiddleware } from "./middleware.ts";
-import type { AppType } from "./middleware.ts";
-import { registerS3Routes } from "./routes/s3.ts";
-import { registerViewRoutes } from "./routes/views.ts";
-import { registerProfileRoutes } from "./routes/profile.ts";
-import { registerNotificationRoutes } from "./routes/notifications.ts";
-import { registerAuthRoutes } from "./routes/auth.ts";
-import { registerStorybookRoutes } from "./routes/storybooks.ts";
-import { registerStoryverseRoutes } from "./routes/storyverses.ts";
-import { registerCharacterRoutes } from "./routes/characters.ts";
-import { registerCommentRoutes } from "./routes/comments.ts";
-import { registerFollowRoutes } from "./routes/follows.ts";
-import { registerAdminRoutes } from "./routes/admin.ts";
+import * as db from "./db.js";
+import { mcpHttpHandler } from "./mcp.js";
+import { authMiddleware } from "./middleware.js";
+import type { AppType } from "./middleware.js";
+import { registerS3Routes } from "./routes/s3.js";
+import { registerViewRoutes } from "./routes/views.js";
+import { registerProfileRoutes } from "./routes/profile.js";
+import { registerNotificationRoutes } from "./routes/notifications.js";
+import { registerAuthRoutes } from "./routes/auth.js";
+import { registerStorybookRoutes } from "./routes/storybooks.js";
+import { registerStoryverseRoutes } from "./routes/storyverses.js";
+import { registerCharacterRoutes } from "./routes/characters.js";
+import { registerCommentRoutes } from "./routes/comments.js";
+import { registerFollowRoutes } from "./routes/follows.js";
+import { registerAdminRoutes } from "./routes/admin.js";
 
 const app: AppType = new Hono();
 
@@ -92,4 +92,4 @@ app.all("/mcp", async (c) => {
 export default app;
 
 // Re-exported for consumers (main.ts, tests)
-export { ensureOwnerAccount, sha256 } from "./middleware.ts";
+export { ensureOwnerAccount, sha256 } from "./middleware.js";

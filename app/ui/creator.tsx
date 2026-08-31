@@ -1,6 +1,6 @@
 /** @jsxImportSource hono/jsx */
 import { html } from "hono/html";
-import * as db from "../db.ts";
+import * as db from "../db.js";
 
 // Creator Dashboard View
 export function renderCreatorPanel(

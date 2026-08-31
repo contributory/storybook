@@ -1,6 +1,6 @@
-import type { AppType } from "../middleware.ts";
-import * as db from "../db.ts";
-import { sha256, setAuthCookies, clearAuthCookies } from "../middleware.ts";
+import type { AppType } from "../middleware.js";
+import * as db from "../db.js";
+import { sha256, setAuthCookies, clearAuthCookies } from "../middleware.js";
 
 export function registerAuthRoutes(app: AppType) {
   app.post("/api/auth/register", async c => {

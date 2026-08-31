@@ -1,5 +1,5 @@
-import * as db from "./app/db.ts";
-import app, { ensureOwnerAccount } from "./app/app.ts";
+import * as db from "./app/db.js";
+import app, { ensureOwnerAccount } from "./app/app.js";
 
 // 1. Initialize the Database tables
 await db.initDb();

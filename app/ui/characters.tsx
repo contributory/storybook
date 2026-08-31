@@ -1,8 +1,8 @@
 /** @jsxImportSource hono/jsx */
 import { html } from "hono/html";
-import * as db from "../db.ts";
-import { markdownToText } from "./markdown.ts";
-import { renderPagination } from "./pagination.tsx";
+import * as db from "../db.js";
+import { markdownToText } from "./markdown.js";
+import { renderPagination } from "./pagination.js";
 
 export function renderCharactersPage(
   charsResult: db.PageResult<db.Character>,

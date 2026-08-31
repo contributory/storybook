@@ -1,5 +1,5 @@
-import type { AppType } from "../middleware.ts";
-import * as db from "../db.ts";
+import type { AppType } from "../middleware.js";
+import * as db from "../db.js";
 
 export function registerFollowRoutes(app: AppType) {
   // --- FOLLOWS API ---

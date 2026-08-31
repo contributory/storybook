@@ -1,6 +1,6 @@
 /** @jsxImportSource hono/jsx */
 import { html } from "hono/html";
-import * as db from "../db.ts";
+import * as db from "../db.js";
 
 export function renderAuthorsList(authorsStr: string) {
   const authors = authorsStr.split(",").map(a => a.trim()).filter(Boolean);
@@ -9,8 +9,8 @@ export function renderAuthorsList(authorsStr: string) {
   `)}`;
 }
 
-import { renderCommentsArea } from "./comments.tsx";
-import { renderMarkdown } from "./markdown.ts";
+import { renderCommentsArea } from "./comments.js";
+import { renderMarkdown } from "./markdown.js";
 
 // Storybook detail page View
 export function renderStorybookDetail(book: db.Storybook, chapters: Omit<db.Chapter, "content">[], user: db.User | null) {

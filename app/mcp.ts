@@ -4,7 +4,7 @@ import { StreamableHTTPTransport } from "@hono/mcp";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { z } from "zod";
-import * as db from "./db.ts";
+import * as db from "./db.js";
 
 const BASE_URL = process.env.BASE_URL || "http://localhost:8000";
 

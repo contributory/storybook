@@ -1,8 +1,8 @@
 /** @jsxImportSource hono/jsx */
 import { html } from "hono/html";
-import * as db from "../db.ts";
-import { markdownToText } from "./markdown.ts";
-import { renderPagination } from "./pagination.tsx";
+import * as db from "../db.js";
+import { markdownToText } from "./markdown.js";
+import { renderPagination } from "./pagination.js";
 
 export function renderProfilePage(
   profileUser: db.User,
@@ -199,7 +199,7 @@ export function renderProfilePage(
   `;
 }
 
-import { t, type Language } from "../i18n.ts";
+import { t, type Language } from "../i18n.js";
 
 export function renderSettingsPage(user: db.User, currentLang: Language = 'vi') {
   return html`
