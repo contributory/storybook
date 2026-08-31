@@ -13,35 +13,24 @@ out/
 .env.local
 .env.*
 
-# Python related
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Python cache (if present)
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-.Python
-env/
-venv/
-.venv/
-pip-log.txt
-pip-delete-this-directory.txt
 
 # Logs
 *.log
 
 # OS generated files
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
-
-# IDE related
-.vscode/
-.idea/
-*.swp
-*.swo
 
 # Coverage reports
 coverage/
@@ -50,5 +39,4 @@ htmlcov/
 
 # Temporary files
 *.tmp
-*.temp
 ```
