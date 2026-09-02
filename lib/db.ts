@@ -16,25 +16,40 @@ import { OWNER_USERNAME } from "./owner";
 
 export { isEnvOwnerUsername } from "./owner";
 
-// Database client initialization
-let dbClient: Client;
-if (TURSO_DB_URL) {
-  console.log("Connecting to Turso LibSQL Database...");
-  dbClient = createClient({
-    url: TURSO_DB_URL,
-    authToken: TURSO_DB_AUTH_TOKEN,
-  });
-} else {
+// Database client initialization.
+// Created lazily on first DB access so that merely importing this module
+// (e.g. during `next build` page-data collection) never opens a connection.
+let dbClientInstance: Client | null = null;
+
+function initDbClient(): Client {
+  if (TURSO_DB_URL) {
+    console.log("Connecting to Turso LibSQL Database...");
+    return createClient({
+      url: TURSO_DB_URL,
+      authToken: TURSO_DB_AUTH_TOKEN,
+    });
+  }
   // NOTE: the web-standard client cannot open "file:" URLs — this only works
   // in Node (tests alias this import to the node client). On edge, set TURSO_DB_URL.
   console.warn(
     "[db] TURSO_DB_URL is not set. The web-standard client only supports libsql:/https:/wss: URLs; " +
       'falling back to local "file:local.db" will fail unless the Node client is used.'
   );
-  dbClient = createClient({
+  return createClient({
     url: "file:local.db",
   });
 }
+
+// Lazy proxy: every property access initializes the real client on demand.
+export const dbClient: Client = new Proxy({} as Client, {
+  get(_target, prop, _receiver) {
+    if (!dbClientInstance) {
+      dbClientInstance = initDbClient();
+    }
+    const value = Reflect.get(dbClientInstance as object, prop, dbClientInstance);
+    return typeof value === "function" ? value.bind(dbClientInstance) : value;
+  },
+});
 
 // S3 Storage Setup if credentials are provided
 let s3Client: any = null;

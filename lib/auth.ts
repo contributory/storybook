@@ -8,8 +8,11 @@ import { normalizeLanguage, type Language } from "./i18n";
 // Resolve the authenticated user for React Server Components. Memoized per
 // request with React `cache()` so the layout and the page share one lookup.
 export const getSessionUser = cache(async (): Promise<db.User | null> => {
-  await ensureReady();
+  // Read the dynamic API first: during static prerendering (e.g. `/_not-found`
+  // at build time) this suspends/throws before any database access happens,
+  // so building no longer requires a reachable database.
   const store = await cookies();
+  await ensureReady();
   return authenticate(store.get(AUTH_COOKIE)?.value, store.get(SESSION_COOKIE)?.value);
 });
 
