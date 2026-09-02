@@ -53,6 +53,9 @@ yarn-error.log*
 node_modules/
 dist/
 build/
+.next/
+out/
+*.tsbuildinfo
 .nyc_output
 coverage/
 *.lcov

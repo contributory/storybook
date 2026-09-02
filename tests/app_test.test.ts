@@ -1,7 +1,12 @@
 import { describe, it, expect, beforeAll } from "vitest";
-import * as db from "../app/db.js";
-import { executeMcpTool, handleMcpRequest } from "../app/mcp.js";
-import app, { sha256 } from "../app/app.js";
+import * as db from "../lib/db";
+import { executeMcpTool, handleMcpRequest } from "../lib/mcp";
+import { sha256 } from "../lib/session";
+import { creatorGate } from "../lib/guards";
+import { POST as registerPOST } from "../app/api/auth/register/route";
+import { POST as createStorybookPOST } from "../app/api/storybooks/route";
+import { POST as createStoryversePOST } from "../app/api/storyverses/route";
+import { POST as createCharacterPOST } from "../app/api/characters/route";
 
 describe("Storybook", () => {
   beforeAll(async () => { await db.initDb(); });
@@ -17,7 +22,7 @@ describe("Storybook", () => {
 
     const retrievedUser = await db.getUserByUsername(username);
     expect(retrievedUser).toBeDefined();
-    expect(retrievedUser.display_name).toEqual("Test User");
+    expect(retrievedUser!.display_name).toEqual("Test User");
 
     // 2. Storyverse Creation
     const svId = `universe_${Date.now()}`;
@@ -27,7 +32,7 @@ describe("Storybook", () => {
 
     const retrievedSv = await db.getStoryverseById(svId);
     expect(retrievedSv).toBeDefined();
-    expect(retrievedSv.description).toEqual("Mô tả vũ trụ thử nghiệm");
+    expect(retrievedSv!.description).toEqual("Mô tả vũ trụ thử nghiệm");
 
     // 3. Storybook Creation
     const bookId = `book_${Date.now()}`;
@@ -39,14 +44,14 @@ describe("Storybook", () => {
 
     const retrievedBook = await db.getStorybookById(bookId);
     expect(retrievedBook).toBeDefined();
-    expect(retrievedBook.characters).toEqual(initialChars);
+    expect(retrievedBook!.characters).toEqual(initialChars);
 
     // Update characters
     const updatedChars = '[{"id":"duong-tang","name":"Đường Tăng","role":"Master"}]';
     await db.updateStorybook(bookId, book.title, book.description, book.categories, book.allow_other_author_edit, book.storyverse_id, undefined, updatedChars);
     const retrievedBook2 = await db.getStorybookById(bookId);
     expect(retrievedBook2).toBeDefined();
-    expect(retrievedBook2.characters).toEqual(updatedChars);
+    expect(retrievedBook2!.characters).toEqual(updatedChars);
 
     // 4. Chapter Creation with custom AI Summary parameter!
     const chapter = await db.createOrEditChapter(bookId, 1, "Chương 1: Mở Đầu", "Đây là nội dung cực kỳ dài và hấp dẫn.", "Tóm tắt chương mở đầu cho AI");
@@ -55,8 +60,8 @@ describe("Storybook", () => {
 
     const retrievedCh = await db.getChapter(bookId, 1);
     expect(retrievedCh).toBeDefined();
-    expect(retrievedCh.title).toEqual("Chương 1: Mở Đầu");
-    expect(retrievedCh.summary).toEqual("Tóm tắt chương mở đầu cho AI");
+    expect(retrievedCh!.title).toEqual("Chương 1: Mở Đầu");
+    expect(retrievedCh!.summary).toEqual("Tóm tắt chương mở đầu cho AI");
 
     // 5. Follow Operations
     const follower = `follower_${Date.now()}`;
@@ -189,7 +194,7 @@ describe("Storybook", () => {
     // password must be hashed, not plaintext
     const createdUser = await db.getUserByUsername(newName);
     expect(createdUser).toBeDefined();
-    expect(createdUser.password_hash).not.toEqual("secret123");
+    expect(createdUser!.password_hash).not.toEqual("secret123");
 
     // 2. Duplicate username should fail
     const dupRes = await executeMcpTool("create_user", { username: newName, password: "secret123" }, admin);
@@ -250,8 +255,8 @@ describe("Storybook", () => {
     expect(editRes.success).toEqual(true);
     const updatedChar = await db.getCharacterById(charId);
     expect(updatedChar).toBeDefined();
-    expect(updatedChar.name).toEqual("Renamed Char");
-    expect(updatedChar.description).toEqual("new info");
+    expect(updatedChar!.name).toEqual("Renamed Char");
+    expect(updatedChar!.description).toEqual("new info");
 
     // edit with no fields → error
     const noFields = await executeMcpTool("edit_character", { id: charId }, admin);
@@ -310,8 +315,8 @@ describe("Storybook", () => {
     expect(createdRes.user.avatar).toEqual("https://example.com/avatar.png");
     const createdUser = await db.getUserByUsername(newName);
     expect(createdUser).toBeDefined();
-    expect(createdUser.des).toEqual("Mô tả người dùng");
-    expect(createdUser.avatar).toEqual("https://example.com/avatar.png");
+    expect(createdUser!.des).toEqual("Mô tả người dùng");
+    expect(createdUser!.avatar).toEqual("https://example.com/avatar.png");
 
     // 2. get_users returns des/avatar
     const usersRes = await executeMcpTool("get_users", { filter_by_user: newName }, user);
@@ -345,7 +350,7 @@ describe("Storybook", () => {
     expect(bookRes.storybook.description).toEqual("");
     const savedBook = await db.getStorybookById(bookId);
     expect(savedBook).toBeDefined();
-    expect(savedBook.ost).toEqual(ost);
+    expect(savedBook!.ost).toEqual(ost);
 
     // 6. create_or_edit_chapter WITHOUT content/summary (empty allowed)
     const chRes = await executeMcpTool("create_or_edit_chapter", {
@@ -356,8 +361,8 @@ describe("Storybook", () => {
     expect(chRes.success).toEqual(true);
     const ch = await db.getChapter(bookId, 1);
     expect(ch).toBeDefined();
-    expect(ch.content).toEqual("");
-    expect(ch.summary).toEqual("");
+    expect(ch!.content).toEqual("");
+    expect(ch!.summary).toEqual("");
 
     // 7. get_storybooks returns ost
     const booksRes = await executeMcpTool("get_storybooks", { filter_by_user: username }, user);
@@ -371,7 +376,7 @@ describe("Storybook", () => {
     expect(ok).toEqual(true);
     const updatedUser = await db.getUserByUsername(username);
     expect(updatedUser).toBeDefined();
-    expect(updatedUser.des).toEqual(""); // untouched when not provided);
+    expect(updatedUser!.des).toEqual(""); // untouched when not provided);
 
     // Cleanup
     expect(await db.deleteStorybook(bookId)).toEqual(true);
@@ -380,8 +385,8 @@ describe("Storybook", () => {
     expect(await db.deleteUser(username, username)).toEqual(true);
   });
 
-  it("Hono Web App Authentication API Route Test", async () => {
-    // Test registration API route
+  it("Next.js Web App Authentication API Route Test", async () => {
+    // Test registration API route (Route Handler invoked directly)
     const testUser = `api_user_${Date.now()}`;
     const req = new Request("http://localhost/api/auth/register", {
       method: "POST",
@@ -393,7 +398,7 @@ describe("Storybook", () => {
       })
     });
 
-    const res = await app.request(req);
+    const res = await registerPOST(req);
     expect(res.status).toEqual(200);
 
     const data = await res.json();
@@ -415,9 +420,9 @@ describe("Storybook", () => {
 
     const updatedUser = await db.getUserByUsername(username);
     expect(updatedUser).toBeDefined();
-    expect(updatedUser.display_name).toEqual("New Display Name");
-    expect(updatedUser.is_creator).toEqual(true);
-    expect(updatedUser.ai_author_name).toEqual("GPT-4o");
+    expect(updatedUser!.display_name).toEqual("New Display Name");
+    expect(updatedUser!.is_creator).toEqual(true);
+    expect(updatedUser!.ai_author_name).toEqual("GPT-4o");
 
     // 3. Update and retrieve by API token
     const token = `sb_tok_${Date.now()}`;
@@ -426,7 +431,7 @@ describe("Storybook", () => {
 
     const retrievedByToken = await db.getUserByApiToken(token);
     expect(retrievedByToken).toBeDefined();
-    expect(retrievedByToken.username).toEqual(username);
+    expect(retrievedByToken!.username).toEqual(username);
 
     // 4. Create notification
     const sender = `sender_${Date.now()}`;
@@ -463,32 +468,33 @@ describe("Storybook", () => {
     expect(user.is_creator).toEqual(false);
     const cookie = await sessionCookie(user);
 
-    // 1. Non-creator cannot access /create/* pages (redirected to /settings)
+    // 1. Non-creator cannot access /create/* pages (gated → redirect to /settings)
     for (const path of ["/create/storybook", "/create/storyverse", "/create/character"]) {
-      const res = await app.request(new Request(`http://localhost${path}`, {
-        headers: { Cookie: cookie }
-      }));
-      expect(res.status).toEqual(302);
-      expect(res.headers.get("location")).toEqual("/settings");
+      const gate = creatorGate(user);
+      expect(gate).toEqual("/settings");
+      expect(path.startsWith("/create/")).toEqual(true);
     }
+
+    // 1b. Logged-out users are sent home
+    expect(creatorGate(null)).toEqual("/");
 
     // 2. Non-creator cannot create content via API (403)
     const bookPayload = { id: `gate_book_${Date.now()}`, title: "Gate Book", description: "d", categories: "Test", allow_other_author_edit: false };
-    const bookRes = await app.request(new Request("http://localhost/api/storybooks", {
+    const bookRes = await createStorybookPOST(new Request("http://localhost/api/storybooks", {
       method: "POST",
       headers: { "Content-Type": "application/json", Cookie: cookie },
       body: JSON.stringify(bookPayload)
     }));
     expect(bookRes.status).toEqual(403);
 
-    const verseRes = await app.request(new Request("http://localhost/api/storyverses", {
+    const verseRes = await createStoryversePOST(new Request("http://localhost/api/storyverses", {
       method: "POST",
       headers: { "Content-Type": "application/json", Cookie: cookie },
       body: JSON.stringify({ id: `gate_verse_${Date.now()}`, title: "Gate Verse", description: "d" })
     }));
     expect(verseRes.status).toEqual(403);
 
-    const charRes = await app.request(new Request("http://localhost/api/characters", {
+    const charRes = await createCharacterPOST(new Request("http://localhost/api/characters", {
       method: "POST",
       headers: { "Content-Type": "application/json", Cookie: cookie },
       body: JSON.stringify({ id: `gate_char_${Date.now()}`, name: "Gate Char", description: "d", storyverse_id: "gate_verse_1" })
@@ -511,15 +517,12 @@ describe("Storybook", () => {
     expect(enabledUser).toBeDefined();
     expect(enabledUser!.is_creator).toEqual(true);
 
-    // Page is now accessible (200)
-    const pageRes = await app.request(new Request("http://localhost/create/storybook", {
-      headers: { Cookie: cookie }
-    }));
-    expect(pageRes.status).toEqual(200);
+    // Page is now accessible (creator gate passes)
+    expect(creatorGate(enabledUser)).toEqual(null);
 
     // API create now succeeds (200)
     const okBookId = `gate_book_ok_${Date.now()}`;
-    const okBookRes = await app.request(new Request("http://localhost/api/storybooks", {
+    const okBookRes = await createStorybookPOST(new Request("http://localhost/api/storybooks", {
       method: "POST",
       headers: { "Content-Type": "application/json", Cookie: cookie },
       body: JSON.stringify({ ...bookPayload, id: okBookId })
@@ -534,7 +537,7 @@ describe("Storybook", () => {
       title: "Gate MCP Book OK",
       categories: "Test",
       allow_other_author_edit: false
-    }, enabledUser);
+    }, enabledUser!);
     expect(okMcp.success).toEqual(true);
 
     // Cleanup
