@@ -25,7 +25,12 @@ if (TURSO_DB_URL) {
     authToken: TURSO_DB_AUTH_TOKEN,
   });
 } else {
-  console.log("Using local SQLite database (local.db)...");
+  // NOTE: the web-standard client cannot open "file:" URLs — this only works
+  // in Node (tests alias this import to the node client). On edge, set TURSO_DB_URL.
+  console.warn(
+    "[db] TURSO_DB_URL is not set. The web-standard client only supports libsql:/https:/wss: URLs; " +
+      'falling back to local "file:local.db" will fail unless the Node client is used.'
+  );
   dbClient = createClient({
     url: "file:local.db",
   });
